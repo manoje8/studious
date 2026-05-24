@@ -3,8 +3,8 @@ repos:
     rev: v0.4.4
     hooks:
       - id: ruff
+        args: [ --fix, --ignore=E402 ]
       - id: ruff-format
-        args: [--fix, --ignore=E402]
 
   - repo: https://github.com/psf/black
     rev: 24.4.2
