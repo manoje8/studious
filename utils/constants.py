@@ -32,3 +32,6 @@ SKIP_TAGS = {
 BLOCK_TAGS = {"p", "li", "blockquote", "pre", "td", "th", "dd", "dt"}
 
 HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+
+
+GOOGLE_DOC_AI = "google_doc_ai"

@@ -26,3 +26,6 @@ class Config(BaseSettings):
     MAX_PAGE_PER_PARSE: int = int(os.getenv("MAX_PAGE_PER_PARSE", "20"))
 
     model_config = SettingsConfigDict(env_file="../.env")
+
+
+config = Config()

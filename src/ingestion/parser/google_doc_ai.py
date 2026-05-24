@@ -6,16 +6,16 @@ import logfire
 from google.cloud import documentai
 from pypdf import PdfReader, PdfWriter
 
-from parser import Parser
-from utils.config import Config
+from .parser import Parser
+from utils.config import config
 from utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
 
 
 class GoogleDocAI(Parser):
-    logfire.info("Google DocumentAI")
 
     def __init__(self):
         super().__init__()
+        logfire.configure(service_name=self.__class__.__name__)
         self.client = documentai.DocumentProcessorServiceClient()
 
     def parse_pdf(
@@ -121,7 +121,7 @@ class GoogleDocAI(Parser):
         logfire.debug(f"{name_without_suffix} PDF with {total_pages}'s pages")
 
         text = ""
-        max_page: int = Config.MAX_PAGE_PER_PARSE
+        max_page: int = config.MAX_PAGE_PER_PARSE
 
         if total_pages <= max_page:
             with open(file_path, "rb") as f:
@@ -158,12 +158,12 @@ class GoogleDocAI(Parser):
             raise ValueError(f"No MIME type mapping for extension: {ext}")
 
         client_name = self.client.processor_path(
-            Config.PROJECT_ID,
-            Config.GCP_DOC_AI_LOCATION,
-            Config.GCP_DOC_AI_PROCESSOR_ID,
+            config.PROJECT_ID,
+            config.GCP_DOC_AI_LOCATION,
+            config.GCP_DOC_AI_PROCESSOR_ID,
         )
 
-        raw_doc = documentai.RawDocument(content=content, mimetype=mime_type)
+        raw_doc = documentai.RawDocument(content=content, mime_type=mime_type)
         request = documentai.ProcessRequest(name=client_name, raw_document=raw_doc)
 
         result = self.client.process_document(request=request)
