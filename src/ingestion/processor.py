@@ -10,7 +10,7 @@ import logfire
 from src.ingestion.parser.google_doc_ai import GoogleDocAI
 from src.ingestion.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
-from src.ingestion.qdrant import QdrantStorageService
+from src.services.qdrant import QdrantStorageService
 from utils.constants import GOOGLE_DOC_AI, HTML_FORMATS, OFFICE_FORMATS
 from utils.config import config
 
@@ -20,7 +20,9 @@ class Processor:
         logfire.configure(service_name=self.__class__.__name__)
 
         self.embedding_service = EmbeddingService(
-            model_name="gemini-embedding-001", dimensions=1536, batch_size=100
+            model_name=config.EMBEDDING_MODEL_NAME,
+            dimensions=config.EMBEDDING_DIMENSIONS,
+            batch_size=config.EMBEDDING_BATCH_SIZE,
         )
         self.storage_service = QdrantStorageService(
             url=config.QDRANT_CLUSTER_ENDPOINT,

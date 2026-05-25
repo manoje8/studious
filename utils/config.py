@@ -27,5 +27,11 @@ class Config:
 
     MAX_PAGE_PER_PARSE: int = int(os.getenv("MAX_PAGE_PER_PARSE", "20"))
 
+    EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME")
+    EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", 1356))
+    EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", 100))
+
+    VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", 1356))
+
 
 config = Config()

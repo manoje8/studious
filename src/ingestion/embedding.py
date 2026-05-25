@@ -44,7 +44,7 @@ class EmbeddingService:
 
     @property
     def vector_size(self) -> int:
-        return self.dimensions or 1536
+        return self.dimensions or config.VECTOR_SIZE
 
     async def embed_single(self, text: str) -> list[float]:
         """Embed one piece of text"""
