@@ -51,7 +51,6 @@ class Chunk:
 
 
 class Chunking:
-    @staticmethod
     def chunk_by_structure(
         self,
         content_list: list[dict],
@@ -65,8 +64,13 @@ class Chunking:
         chunk_index = 0
 
         for block in content_list:
-            block_type = block.get("type", "paragraph")
-            text = block.get("text", "").strip()
+            if isinstance(block, dict):
+                block_type = block.get("type", "paragraph")
+                text = block.get("text", "").strip()
+            else:
+                block_type = "paragraph"
+                text = str(block).strip()
+                block = {"type": block_type, "text": text}
 
             if not text:
                 continue
@@ -140,7 +144,6 @@ class Chunking:
 
         return chunks
 
-    @staticmethod
     def chunk_fixed(
         self,
         content_list: list[dict],
@@ -151,9 +154,17 @@ class Chunking:
         overlap: int = 50,
         split_by_character: str = "\n\n",
     ) -> list[Chunk]:
-        full_text = split_by_character.join(
-            block.get("text", "") for block in content_list if block.get("text")
-        )
+        texts = []
+        for block in content_list:
+            if isinstance(block, dict):
+                text = block.get("text", "")
+            else:
+                text = str(block)
+
+            if text:
+                texts.append(text)
+
+        full_text = split_by_character.join(texts)
 
         segments = full_text.split(split_by_character)
 

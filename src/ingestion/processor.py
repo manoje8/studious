@@ -7,14 +7,26 @@ from typing import Dict
 
 import logfire
 
-from parser.google_doc_ai import GoogleDocAI
+from src.ingestion.parser.google_doc_ai import GoogleDocAI
 from src.ingestion.chunk import Chunking
+from src.ingestion.embedding import EmbeddingService
+from src.ingestion.qdrant import QdrantStorageService
 from utils.constants import GOOGLE_DOC_AI, HTML_FORMATS, OFFICE_FORMATS
+from utils.config import config
 
 
 class Processor:
     def __init__(self):
         logfire.configure(service_name=self.__class__.__name__)
+
+        self.embedding_service = EmbeddingService(
+            model_name="gemini-embedding-001", dimensions=1536, batch_size=100
+        )
+        self.storage_service = QdrantStorageService(
+            url=config.QDRANT_CLUSTER_ENDPOINT,
+            collection_name=config.QDRANT_COLLECTION_NAME,
+            vector_size=self.embedding_service.vector_size,
+        )
 
     def _get_parser(self, parser_type: str):
         parser_name = parser_type.strip().lower()
@@ -54,25 +66,27 @@ class Processor:
 
         return f"doc={hasher.hexdigest()[:24]}"
 
-    def _chunk_doc_content(
+    async def _chunk_doc_content(
         self,
         file_path: Path,
         content_list: list[dict],
         doc_id: str,
-        split_by_character,
         chunking_strategy: str,
+        split_by_character: str | None = None,
     ):
         logfire.info(f"Starting chunking with strategy: {chunking_strategy}")
 
+        chunking = Chunking()
+
         if chunking_strategy == "structure":
-            chunks = Chunking.chunk_by_structure(
-                content_list,
+            chunks = chunking.chunk_by_structure(
+                content_list=content_list,
                 doc_id=doc_id or file_path.stem,
                 source_file=str(file_path),
             )
         elif chunking_strategy == "fixed":
-            chunks = Chunking.chunk_fixed(
-                content_list,
+            chunks = chunking.chunk_fixed(
+                content_list=content_list,
                 doc_id=doc_id or file_path.stem,
                 source_file=str(file_path),
                 split_by_character=split_by_character or "\n\n",
@@ -88,7 +102,7 @@ class Processor:
 
     async def process_document_complete(
         self,
-        file_path: str,
+        file_path: str | Path,
         output_dir: str = None,
         parse_method: str = None,
         display_stats: bool = None,
@@ -99,11 +113,6 @@ class Processor:
         **kwargs,
     ):
         logfire.info(f"Starting document parsing: {file_path}")
-
-        file_path = Path(file_path)
-
-        if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
 
         ext = file_path.suffix.lower()
 
@@ -174,95 +183,161 @@ class Processor:
 
         return content_list, doc_id
 
+    async def ingest_document(
+        self,
+        file_path: str,
+        doc_id: str | None = None,
+        chunking_strategy: str = "structure",
+    ):
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        content_list, doc_id = await self.process_document_complete(
+            file_path=file_path, doc_id=doc_id, chunking_strategy=chunking_strategy
+        )
+        logfire.info(f"Stage 1 complete: {len(content_list)} content list")
+
+        chunks = await self._chunk_doc_content(
+            content_list=content_list,
+            file_path=file_path,
+            doc_id=doc_id,
+            chunking_strategy=chunking_strategy,
+        )
+
+        embedded_chunks = await self.embedding_service.embed_chunks(chunks)
+        logfire.info(f"Stage 3 complete: {len(embedded_chunks)} vectors")
+
+        await self.storage_service.upsert_embedded_chunks(embedded_chunks)
+        logfire.info("Stage 4 complete: stored in Qdrant")
+
+        return {
+            "doc_id": doc_id,
+            "chunks_produced": len(chunks),
+            "vectors_stored": len(embedded_chunks),
+        }
+
+    async def query(
+        self, question: str, top_k: int = 5, doc_id_filter: str | None = None
+    ):
+        if not question:
+            raise ValueError("Please enter your question!")
+
+        query_vector = await self.embedding_service.embed_single(question)
+
+        results = await self.storage_service.search(
+            query_vector=query_vector, top_k=top_k, doc_id_filter=doc_id_filter
+        )
+
+        return results
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Parse a document (PDF, Office, HTML) and extract content blocks."
+        description="Parse, ingest, and query documents (PDF, Office, HTML)."
     )
-    parser.add_argument("file_path", type=str, help="Path to the input document.")
-    parser.add_argument(
-        "--output-dir",
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    parse_parser = subparsers.add_parser(
+        "parse",
+        help="Parse a document and extract content blocks (no embedding/storage).",
+    )
+    parse_parser.add_argument("file_path", type=str, help="Path to the input document.")
+    parse_parser.add_argument("--output-dir", type=str, default=None)
+    parse_parser.add_argument("--parse-method", type=str, default=None)
+    parse_parser.add_argument("--display-stats", action="store_true")
+    parse_parser.add_argument("--split-by-character", type=str, default=None)
+    parse_parser.add_argument("--split-by-character-only", type=str, default=None)
+    parse_parser.add_argument("--doc-id", type=str, default=None)
+    parse_parser.add_argument("--file-name", type=str, default=None)
+
+    ingest_parser = subparsers.add_parser(
+        "ingest",
+        help="Parse, embed, and store a document in Qdrant.",
+    )
+    ingest_parser.add_argument(
+        "file_path", type=str, help="Path to the input document."
+    )
+    ingest_parser.add_argument(
+        "--doc-id", type=str, default=None, help="Optional document identifier."
+    )
+    ingest_parser.add_argument(
+        "--chunking-strategy",
+        type=str,
+        default="structure",
+        help="Chunking strategy passed to process_document_complete (default: structure).",
+    )
+
+    query_parser = subparsers.add_parser(
+        "query",
+        help="Embed a question and retrieve the most relevant chunks from Qdrant.",
+    )
+    query_parser.add_argument("question", type=str, help="Question to search for.")
+    query_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="Number of results to return (default: 5).",
+    )
+    query_parser.add_argument(
+        "--doc-id-filter",
         type=str,
         default=None,
-        help="Directory to save extracted content (optional).",
+        help="Restrict search to a specific document ID.",
     )
-    parser.add_argument(
-        "--parse-method",
-        type=str,
-        default=None,
-        help="Parsing method (passed to underlying parser).",
-    )
-    parser.add_argument(
-        "--display-stats",
-        action="store_true",
-        help="Show statistics about extracted content blocks.",
-    )
-    parser.add_argument(
-        "--split-by-character",
-        type=str,
-        default=None,
-        help="Character to split content by (passed via **kwargs).",
-    )
-    parser.add_argument(
-        "--split-by-character-only",
-        type=str,
-        default=None,
-        help="Character to split content by, only this method (passed via **kwargs).",
-    )
-    parser.add_argument(
-        "--doc-id",
-        type=str,
-        default=None,
-        help="Document identifier (passed via **kwargs).",
-    )
-    parser.add_argument(
-        "--file-name",
-        type=str,
-        default=None,
-        help="Override original file name (passed via **kwargs).",
-    )
+
     return parser.parse_args()
 
 
 async def main():
     args = parse_args()
-
-    extra_kwargs = {
-        k: v
-        for k, v in vars(args).items()
-        if k in ["split_by_character", "split_by_character_only", "doc_id", "file_name"]
-        and v is not None
-    }
-
     processor = Processor()
 
-    output_dir = args.output_dir
-    if output_dir is not None:
-        output_dir = str(Path(output_dir))
+    if args.command == "parse":
+        output_dir = str(Path(args.output_dir)) if args.output_dir else None
 
-    content_list = await processor.process_document_complete(
-        file_path=args.file_path,
-        output_dir=output_dir,
-        parse_method=args.parse_method,
-        display_stats=args.display_stats,
-        split_by_character=extra_kwargs.get("split_by_character"),
-        split_by_character_only=extra_kwargs.get("split_by_character_only"),
-        doc_id=extra_kwargs.get("doc_id"),
-        file_name=extra_kwargs.get("file_name"),
-        **extra_kwargs,
-    )
+        content_list = await processor.process_document_complete(
+            file_path=args.file_path,
+            output_dir=output_dir,
+            parse_method=args.parse_method,
+            display_stats=args.display_stats,
+            split_by_character=args.split_by_character,
+            split_by_character_only=args.split_by_character_only,
+            doc_id=args.doc_id,
+            file_name=args.file_name,
+        )
 
-    if output_dir and content_list:
-        out_path = Path(output_dir)
-        out_path.mkdir(parents=True, exist_ok=True)
-        output_file = out_path / f"{Path(args.file_path).stem}_content.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(content_list, f, indent=2, default=str)
-        print(f"Saved extracted content to {output_file}")
-    else:
-        print(f"Extracted {len(content_list)} content blocks.")
-        if args.display_stats:
-            pass
+        if output_dir and content_list:
+            out_path = Path(output_dir)
+            out_path.mkdir(parents=True, exist_ok=True)
+            output_file = out_path / f"{Path(args.file_path).stem}_content.json"
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(content_list, f, indent=2, default=str)
+            print(f"Saved {len(content_list)} content blocks to {output_file}")
+        else:
+            print(f"Extracted {len(content_list)} content blocks.")
+
+    elif args.command == "ingest":
+        result = await processor.ingest_document(
+            file_path=args.file_path,
+            doc_id=args.doc_id,
+            chunking_strategy=args.chunking_strategy,
+        )
+        print(
+            f"Ingestion complete — "
+            f"doc_id={result['doc_id']}, "
+            f"chunks={result['chunks_produced']}, "
+            f"vectors stored={result['vectors_stored']}"
+        )
+
+    elif args.command == "query":
+        results = await processor.query(
+            question=args.question,
+            top_k=args.top_k,
+            doc_id_filter=args.doc_id_filter,
+        )
+        print(json.dumps(results, indent=2, default=str))
 
 
 if __name__ == "__main__":
