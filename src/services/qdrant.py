@@ -18,7 +18,7 @@ class QdrantStorageService:
     def __init__(
         self,
         url: str,
-        collection_name: str,
+        collection_name: str = config.QDRANT_COLLECTION_NAME,
         vector_size: int = 1536,
         upsert_batch_size: int = 100,
     ):
@@ -82,12 +82,21 @@ class QdrantStorageService:
                 for ec in batch
             ]
 
-            await self.client.upsert(
-                collection_name=self.collection_name, points=points
-            )
+            try:
+                await self.client.upsert(
+                    collection_name=self.collection_name, points=points
+                )
+            except Exception as e:
+                logfire.error(
+                    f"Batch {batch_num + 1}/{total_batches} failed",
+                    error=str(e),
+                    start_idx=start,
+                    end_idx=end,
+                )
+                raise
 
             logfire.info(
-                f"Upserted batch {batch_num + 1} / {total_batches}"
+                f"Upserted batch {batch_num + 1}/{total_batches}"
                 f"({len(points)} points)"
             )
 
@@ -118,7 +127,7 @@ class QdrantStorageService:
 
         return [
             {
-                "text": r.payload["text"],
+                "text": r.payload.get("text", ""),
                 "score": r.score,
                 "section": r.payload.get("section_title", ""),
                 "source": r.payload.get("source_file", ""),
