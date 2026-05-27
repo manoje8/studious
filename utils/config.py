@@ -14,6 +14,10 @@ class Config:
     VPC_CONNECTOR: str = os.getenv("VPC_CONNECTOR")
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
 
     QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "rag_docs")
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY")

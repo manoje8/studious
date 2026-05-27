@@ -9,6 +9,8 @@ nest-asyncio
 streamlit
 rank_bm25
 
+google-genai
+
 google-cloud-storage
 google-cloud-aiplatform
 google-cloud-discoveryengine

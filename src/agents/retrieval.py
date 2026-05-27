@@ -88,3 +88,24 @@ class RetrievalAgent:
             decision=RetrievalDecision(evaluation["decision"]),
             reasoning=evaluation["reasoning"],
         )
+
+    async def generate_refined_query(
+        self, original_question: str, previous_rounds: list[RetrievalRound]
+    ) -> str:
+        history = "\n".join(
+            f"Round {i+1}: query='{r.query_used}' -> {r.reasoning}"
+            for i, r in enumerate(previous_rounds)
+        )
+
+        prompt = f"""
+        Original question: {original_question}
+
+        Previous retrieval attempts:
+        {history}
+
+        Generate a better search query that avoids what didn't work.
+        Return only the query string, nothing else.
+        """
+
+        response = await self.llm.complete(prompt)
+        return response.text.strip()

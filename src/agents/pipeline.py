@@ -1,5 +1,6 @@
 import logfire
 
+from src.agents.agentic.agentic import AgenticRAG
 from src.agents.hybrid_search import HybridSearch
 from src.agents.query_expander import QueryExpander
 from src.agents.retrieval import RetrievalAgent
@@ -36,6 +37,13 @@ class Pipeline:
         )
 
         logfire.info(f"Retriever: {str(retriever)}")
+
+        AgenticRAG(
+            llm_client=llm_client,
+            embedding_service=embedding_service,
+            storage_service=storage_service,
+            retrieval_agent=retriever,
+        )
 
         # Sparse Index search
         # Hybrid search
