@@ -18,7 +18,7 @@ class Reranker:
 
         return _ranker
 
-    def rerank(self, query: str, candidates: list[dict]) -> list[dict]:
+    async def rerank(self, query: str, candidates: list[dict]) -> list[dict]:
         if not candidates:
             return []
 

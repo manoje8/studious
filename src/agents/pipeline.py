@@ -1,8 +1,11 @@
 import logfire
 
 from src.agents.hybrid_search import HybridSearch
+from src.agents.query_expander import QueryExpander
+from src.agents.retrieval import RetrievalAgent
 from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
+from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
 
 
@@ -20,6 +23,19 @@ class Pipeline:
         )
 
         logfire.info(f"Hybrid search: {hybrid_search.search(['Example'])}")
+
+        rerank = Reranker()
+
+        query_expander = QueryExpander(llm_client)
+
+        retriever = RetrievalAgent(
+            llm_client=llm_client,
+            hybrid_search=hybrid_search,
+            reranker=rerank,
+            query_expand=query_expander,
+        )
+
+        logfire.info(f"Retriever: {str(retriever)}")
 
         # Sparse Index search
         # Hybrid search
