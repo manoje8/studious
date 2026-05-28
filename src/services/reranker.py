@@ -1,6 +1,8 @@
 import logfire
 from flashrank import Ranker, RerankRequest
 
+_ranker = None
+
 
 class Reranker:
     def __init__(self, top_k: int = 5):
@@ -24,13 +26,27 @@ class Reranker:
 
         try:
             ranker = self._get_ranker()
-            pairs = [{"id": query, "text": chunk["text"]} for chunk in candidates]
+
+            text_to_chunk: dict[str, dict] = {c["text"]: c for c in candidates}
+
+            pairs = [
+                {"id": i, "text": chunk["text"]} for i, chunk in enumerate(candidates)
+            ]
             request = RerankRequest(query=query, passages=pairs)
 
-            results = ranker.rerank(request)
+            reranked = ranker.rerank(request)
 
-            return results
+            merged = []
+            for result in reranked[: self.top_k]:
+                text = result.get("text", "")
+                original = text_to_chunk.get(text)
+                if original:
+                    chunk = dict(original)
+                    chunk["score"] = result.get("score", original.get("score", 0.0))
+                    merged.append(chunk)
+
+            return merged
 
         except Exception as e:
-            logfire.error(f"Sematic reranking failed: {str(e)}")
+            logfire.error(f"Semantic reranking failed: {str(e)}")
             return candidates[: self.top_k]

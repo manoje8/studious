@@ -1,4 +1,5 @@
 import json
+import re
 from abc import ABC, abstractmethod
 
 
@@ -8,9 +9,17 @@ class LLMResponse:
         self._parsed = None
 
     @property
+    def text(self) -> str:
+        """Alias for raw_text — matches the usage pattern across agents."""
+        return self.raw_text
+
+    @property
     def parsed_json(self):
         if self._parsed is None:
-            self._parsed = json.loads(self.raw_text)
+            text = self.raw_text.strip()
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+            self._parsed = json.loads(text.strip())
         return self._parsed
 
     def __str__(self):

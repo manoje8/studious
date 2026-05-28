@@ -68,6 +68,8 @@ class RetrievalAgent:
     ) -> RetrievalRound:
         results = await self.retrieve(query, original_question, state.doc_id_filter)
 
+        print(results)
+
         if not results:
             return RetrievalRound(
                 query_used=query,
@@ -84,7 +86,7 @@ class RetrievalAgent:
         return RetrievalRound(
             query_used=query,
             chunk_retrieved=results,
-            relevance_score=[r["rerank_score"] for r in results],
+            relevance_score=[r["rrf_score"] for r in results],
             decision=RetrievalDecision(evaluation["decision"]),
             reasoning=evaluation["reasoning"],
         )
@@ -108,4 +110,7 @@ class RetrievalAgent:
         """
 
         response = await self.llm.complete(prompt)
-        return response.text.strip()
+
+        print(response.text)
+
+        return response.text

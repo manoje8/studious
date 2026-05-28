@@ -21,17 +21,15 @@ class HybridSearch:
         self.dense_top_k = dense_top_k
         self.sparse_top_k = sparse_top_k
 
-    def _reciprocal_rank_fusion(
-        self, result_lists: list[dict], k: int = 10, id_key: str = "chunk_index"
-    ):
-        """Merge multiple ranked result lists"""
+    def _reciprocal_rank_fusion(self, result_lists: list[dict], k: int = 10):
+        """Merge multiple ranked result lists using a compound doc_id:chunk_index key."""
 
         rrf_scores: dict[str, float] = {}
         chunk_map: dict[str, dict] = {}
 
         for result_list in result_lists:
             for rank, chunk in enumerate(result_list):
-                chunk_id = str(chunk[id_key])
+                chunk_id = f"{chunk.get('doc_id', '')}:{chunk['chunk_index']}"
 
                 rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0) + (
                     1 / (k + rank + 1)
@@ -54,11 +52,11 @@ class HybridSearch:
         self, queries: list[str], doc_id_filter: str | None = None
     ) -> list[dict]:
         all_dense_result = []
-        all_sparse_result = []
+        # all_sparse_result = []
 
         for query in queries:
-            query_vector = self.embedding_service.embed_single(query)
-            dense_result = self.storage_service.search(
+            query_vector = await self.embedding_service.embed_single(query)
+            dense_result = await self.storage_service.search(
                 query_vector=query_vector,
                 top_k=self.dense_top_k,
                 doc_id_filter=doc_id_filter,
@@ -66,12 +64,12 @@ class HybridSearch:
 
             all_dense_result.append(dense_result)
 
-            sparse_result = self.sparse_index.search(query, top_k=self.sparse_top_k)
-            all_sparse_result.append(sparse_result)
+            # sparse_result = self.sparse_index.search(query, top_k=self.sparse_top_k)
+            # all_sparse_result.append(sparse_result)
 
-        dense_merged = self._reciprocal_rank_fusion(dense_result)
-        sparse_merged = self._reciprocal_rank_fusion(sparse_result)
-        final_merged = self._reciprocal_rank_fusion([dense_merged, sparse_merged])
+        dense_merged = self._reciprocal_rank_fusion(all_dense_result)
+        # sparse_merged = self._reciprocal_rank_fusion(all_sparse_result)
+        final_merged = self._reciprocal_rank_fusion([dense_merged])
 
         logfire.info(
             f"Hybrid search: {len(final_merged)} unique candidates "

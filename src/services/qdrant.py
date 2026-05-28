@@ -131,6 +131,7 @@ class QdrantStorageService:
                 "score": r.score,
                 "section": r.payload.get("section_title", ""),
                 "source": r.payload.get("source_file", ""),
+                "doc_id": r.payload.get("doc_id", ""),
                 "chunk_index": r.payload.get("chunk_index"),
             }
             for r in result.points
