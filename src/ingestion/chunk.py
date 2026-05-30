@@ -1,4 +1,6 @@
+import re
 from dataclasses import dataclass, field
+import logfire
 
 
 @dataclass
@@ -52,6 +54,19 @@ class Chunk:
 
 class Chunking:
     # TODO: Need to add more chunking process
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """Fix common OCR artifacts such as space-separated characters."""
+        cleaned = re.sub(
+            r"\b(?:(?<=\s)|(?<=^))([A-Za-z\u2013\u2014\u2018\u2019\u201c\u201d]"
+            r"(?: [A-Za-z\u2013\u2014\u2018\u2019\u201c\u201d]){4,})\b",
+            lambda m: m.group(0).replace(" ", ""),
+            text,
+        )
+        cleaned = re.sub(r" {2,}", " ", cleaned)
+        return cleaned.strip()
+
     def chunk_by_structure(
         self,
         content_list: list[dict],
@@ -67,10 +82,10 @@ class Chunking:
         for block in content_list:
             if isinstance(block, dict):
                 block_type = block.get("type", "paragraph")
-                text = block.get("text", "").strip()
+                text = self._clean_text(block.get("text", "").strip())
             else:
                 block_type = "paragraph"
-                text = str(block).strip()
+                text = self._clean_text(str(block).strip())
                 block = {"type": block_type, "text": text}
 
             if not text:
@@ -158,9 +173,9 @@ class Chunking:
         texts = []
         for block in content_list:
             if isinstance(block, dict):
-                text = block.get("text", "")
+                text = self._clean_text(block.get("text", ""))
             else:
-                text = str(block)
+                text = self._clean_text(str(block))
 
             if text:
                 texts.append(text)
@@ -173,34 +188,80 @@ class Chunking:
         current_tokens = []
         chunk_index = 0
 
+        def flush():
+            nonlocal chunk_index
+            if current_tokens:
+                chunks.append(
+                    Chunk(
+                        text=" ".join(current_tokens),
+                        chunk_index=chunk_index,
+                        doc_id=doc_id,
+                        source_file=source_file,
+                        chunk_type="fixed",
+                    )
+                )
+                chunk_index += 1
+
         for segment in segments:
             words = segment.split()
 
+            while len(words) > chunk_size:
+                available = chunk_size - len(current_tokens)
+                current_tokens.extend(words[:available])
+                words = words[available:]
+                flush()
+                current_tokens = current_tokens[-overlap:]
+
             if len(current_tokens) + len(words) > chunk_size:
-                if current_tokens:
-                    chunks.append(
-                        Chunk(
-                            text=" ".join(current_tokens),
-                            chunk_index=chunk_index,
-                            doc_id=doc_id,
-                            source_file=source_file,
-                            chunk_type="fixed",
-                        )
-                    )
-                    chunk_index += 1
-                    current_tokens = current_tokens[-overlap:]
+                flush()
+                current_tokens = current_tokens[-overlap:]
 
             current_tokens.extend(words)
 
-        if current_tokens:
+        flush()
+        return chunks
+
+    def splitter(
+        self,
+        content_list,
+        doc_id: str,
+        source_file: str,
+        chunk_size: int = 1500,
+        split_by_character: str = "\n\n",
+    ):
+        paragraphs = content_list.split(split_by_character)
+        chunks = []
+        current_chunk = ""
+        chunk_index = 0
+
+        for p in paragraphs:
+            if len(current_chunk) + len(p) < chunk_size:
+                current_chunk += p + split_by_character
+            else:
+                if current_chunk.strip():
+                    chunks.append(
+                        Chunk(
+                            text="".join(current_chunk.strip()),
+                            chunk_index=chunk_index,
+                            doc_id=doc_id,
+                            source_file=source_file,
+                            chunk_type="splitter",
+                        )
+                    )
+                    chunk_index += 1
+                current_chunk = p + split_by_character
+
+        if current_chunk.strip():
             chunks.append(
                 Chunk(
-                    text=" ".join(current_tokens),
+                    text="".join(current_chunk.strip()),
                     chunk_index=chunk_index,
                     doc_id=doc_id,
                     source_file=source_file,
-                    chunk_type="fixed",
+                    chunk_type="splitter",
                 )
             )
+
+        logfire.info(f"Generated {len(chunks)} chunks")
 
         return chunks

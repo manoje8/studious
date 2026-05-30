@@ -1,3 +1,5 @@
+import json
+
 import logfire
 
 from src.agents.agent_model import AgentState, RetrievalDecision
@@ -42,15 +44,19 @@ class AgenticRAG:
             question, classification["category"]
         )
 
+        print(json.dumps(state.sub_questions))
+
         logfire.info(f"Planner: {len(state.sub_questions)} sub questions")
 
         for sub_question in state.sub_questions:
             current_query = sub_question
             round_for_this_subq = 0
+            last_round_chunks: list[dict] = []
 
             while round_for_this_subq < state.max_retrieval_rounds:
                 logfire.info(
-                    f"Retrieval round: {state.current_round + 1}: '{current_query}'"
+                    f"Retrieval round {state.current_round + 1} "
+                    f"(sub-question {state.sub_questions.index(sub_question) + 1}): '{current_query}'"
                 )
 
                 round_result = await self.retriever.retrieve_and_evaluate(
@@ -58,9 +64,12 @@ class AgenticRAG:
                 )
 
                 state.retrieval_rounds.append(round_result)
-
                 state.current_round += 1
                 round_for_this_subq += 1
+
+                # Always track the latest retrieved chunks as a fallback
+                if round_result.chunk_retrieved:
+                    last_round_chunks = round_result.chunk_retrieved
 
                 if round_result.decision == RetrievalDecision.SUFFICIENT:
                     state.accepted_chunks.extend(round_result.chunk_retrieved)
@@ -68,11 +77,19 @@ class AgenticRAG:
                     break
 
                 elif round_result.decision == RetrievalDecision.REFINE_QUERY:
+                    if round_for_this_subq >= state.max_retrieval_rounds:
+                        # No more rounds left — accept best chunks found so far
+                        logfire.warning(
+                            f"Max rounds reached for '{sub_question}', "
+                            f"accepting best {len(last_round_chunks)} chunks as fallback"
+                        )
+                        state.accepted_chunks.extend(last_round_chunks)
+                        break
+
                     current_query = await self.retriever.generate_refined_query(
                         original_question=sub_question,
                         previous_rounds=state.retrieval_rounds,
                     )
-
                     logfire.info(f"Query refined to '{current_query}'")
 
                 elif round_result.decision == RetrievalDecision.EXPAND_SEARCH:
@@ -80,7 +97,17 @@ class AgenticRAG:
                     logfire.info("Expanding search — adding chunks and continuing")
 
                 elif round_result.decision == RetrievalDecision.EXHAUSTED:
-                    logfire.warning(f"Information exhausted for: '{sub_question}'")
+                    # Still accept whatever we found rather than nothing
+                    if last_round_chunks:
+                        logfire.warning(
+                            f"Information exhausted for '{sub_question}', "
+                            f"accepting {len(last_round_chunks)} best-effort chunks"
+                        )
+                        state.accepted_chunks.extend(last_round_chunks)
+                    else:
+                        logfire.warning(
+                            f"Information exhausted for: '{sub_question}' — no chunks found"
+                        )
                     break
 
         logfire.info(f"Grading {len(state.accepted_chunks)} total chunks")

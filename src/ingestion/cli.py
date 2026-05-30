@@ -31,14 +31,17 @@ def parse_args():
     ingest_parser.add_argument(
         "file_path", type=str, help="Path to the input document."
     )
+
+    ingest_parser.add_argument("--split-by-character", type=str, default=None)
+
     ingest_parser.add_argument(
         "--doc-id", type=str, default=None, help="Optional document identifier."
     )
     ingest_parser.add_argument(
         "--chunking-strategy",
         type=str,
-        default="structure",
-        help="Chunking strategy passed to process_document_complete (default: structure).",
+        # default="structure",
+        # help="Chunking strategy passed to process_document_complete (default: structure).",
     )
 
     query_parser = subparsers.add_parser(

@@ -93,7 +93,11 @@ class Processor:
                 split_by_character=split_by_character or "\n\n",
             )
         else:
-            return content_list
+            chunks = chunking.splitter(
+                content_list=content_list,
+                doc_id=doc_id or file_path.stem,
+                source_file=str(file_path),
+            )
 
         logfire.info(
             f"Chunking complete: {len(chunks)} chunks produced from {len(content_list)} blocks"
@@ -188,7 +192,8 @@ class Processor:
         self,
         file_path: str,
         doc_id: str | None = None,
-        chunking_strategy: str = "structure",
+        chunking_strategy: str | None = None,
+        split_by_character: str = "\n\n",
     ):
         file_path = Path(file_path)
 
@@ -196,7 +201,10 @@ class Processor:
             raise FileNotFoundError(f"File not found: {file_path}")
 
         content_list, doc_id = await self.process_document_complete(
-            file_path=file_path, doc_id=doc_id, chunking_strategy=chunking_strategy
+            file_path=file_path,
+            doc_id=doc_id,
+            chunking_strategy=chunking_strategy,
+            split_by_character=split_by_character,
         )
         logfire.info(f"Stage 1 complete: {len(content_list)} content list")
 

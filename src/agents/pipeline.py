@@ -47,15 +47,15 @@ class Pipeline:
         )
 
     async def chat(self, message: str, session_id: str, user_id: str) -> dict:
-        return await self.rag.run(question=message, max_rounds=3)
+        return await self.rag.run(question=message, max_rounds=1)
 
     # multi turn agent
 
 
 async def main():
-    client = GeminiClient()
+    client = GeminiClient(model=config.GEMINI_MODEL)
     pipeline = Pipeline(llm_client=client, qdrant_url=config.QDRANT_CLUSTER_ENDPOINT)
-    result = await pipeline.chat("Explain factory design pattern", "535", "455")
+    result = await pipeline.chat("Explain transformer", "535", "455")
     print(result)
 
 

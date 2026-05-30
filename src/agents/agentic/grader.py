@@ -27,6 +27,8 @@ class GraderAgent:
             result = await self.llm.complete(prompt)
             grade = result.parsed_json
 
+            print(grade)
+
             if grade["relevant"]:
                 chunk["grade_reason"] = grade["reason"]
                 accepted.append(chunk)
