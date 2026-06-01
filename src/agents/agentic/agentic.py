@@ -27,7 +27,7 @@ class AgenticRAG:
         self.synthesizer = SynthesizerAgent(llm_client)
 
     async def run(
-        self, question: str, doc_id_filter: str | None = None, max_rounds: int = 4
+        self, question: str, doc_id_filter: str | None = None, max_rounds: int = 1
     ) -> dict:
         logfire.info(f"Agentic RAG started: '{question}'")
 
@@ -44,9 +44,7 @@ class AgenticRAG:
             question, classification["category"]
         )
 
-        print(json.dumps(state.sub_questions))
-
-        logfire.info(f"Planner: {len(state.sub_questions)} sub questions")
+        logfire.info(f"Planner sub questions: {json.dumps(state.sub_questions)}")
 
         for sub_question in state.sub_questions:
             current_query = sub_question
@@ -67,9 +65,13 @@ class AgenticRAG:
                 state.current_round += 1
                 round_for_this_subq += 1
 
-                # Always track the latest retrieved chunks as a fallback
+                # # Always track the latest retrieved chunks as a fallback
                 if round_result.chunk_retrieved:
                     last_round_chunks = round_result.chunk_retrieved
+
+                logfire.info(
+                    f"Round result retrieval decision: {round_result.decision}"
+                )
 
                 if round_result.decision == RetrievalDecision.SUFFICIENT:
                     state.accepted_chunks.extend(round_result.chunk_retrieved)

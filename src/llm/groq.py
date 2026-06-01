@@ -1,7 +1,7 @@
 from src.llm.base import BaseLLM, LLMResponse
 from langchain_groq import ChatGroq
 
-from utils.config import config
+from src.utils.config import config
 
 
 class GroqClient(BaseLLM):

@@ -1,7 +1,7 @@
 from google import genai
 
 from src.llm.base import BaseLLM, LLMResponse
-from utils.config import config
+from src.utils.config import config
 
 
 class GeminiClient(BaseLLM):

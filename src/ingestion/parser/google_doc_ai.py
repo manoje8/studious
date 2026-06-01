@@ -7,12 +7,11 @@ from google.cloud import documentai
 from pypdf import PdfReader, PdfWriter
 
 from .parser import Parser
-from utils.config import config
-from utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
+from src.utils.config import config
+from src.utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
 
 
 class GoogleDocAI(Parser):
-
     def __init__(self):
         super().__init__()
         logfire.configure(service_name=self.__class__.__name__)
@@ -150,7 +149,6 @@ class GoogleDocAI(Parser):
         return text
 
     def _process_with_doc_ai(self, content: bytes, ext: str) -> str:
-
         ext_key = ext.lower().lstrip(".")
         mime_type = GOOGLE_MIME_TYPES.get(ext_key)
 

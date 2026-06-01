@@ -10,8 +10,8 @@ from src.ingestion.parser.google_doc_ai import GoogleDocAI
 from src.ingestion.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
-from utils.constants import GOOGLE_DOC_AI, HTML_FORMATS, OFFICE_FORMATS
-from utils.config import config
+from src.utils.constants import GOOGLE_DOC_AI, HTML_FORMATS, OFFICE_FORMATS
+from src.utils.config import config
 
 
 class Processor:

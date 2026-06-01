@@ -52,3 +52,5 @@ loguru
 ruff
 black
 pre-commit
+
+ascii_colors

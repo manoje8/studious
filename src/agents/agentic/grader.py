@@ -39,4 +39,7 @@ class GraderAgent:
                 )
 
         logfire.info(f"Grader accepted {len(accepted)}/{len(chunks)} chunks")
+
+        print("__ACCEPTED__", accepted)
+
         return accepted

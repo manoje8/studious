@@ -11,7 +11,7 @@ from qdrant_client.http.models import (
 )
 
 from src.ingestion.embedding import EmbeddedChunk
-from utils.config import config
+from src.utils.config import config
 
 
 class QdrantStorageService:

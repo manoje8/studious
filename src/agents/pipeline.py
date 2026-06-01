@@ -11,7 +11,7 @@ from src.llm.gemini import GeminiClient
 from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
-from utils.config import config
+from src.utils.config import config
 
 
 class Pipeline:
@@ -46,8 +46,10 @@ class Pipeline:
             retrieval_agent=retriever,
         )
 
-    async def chat(self, message: str, session_id: str, user_id: str) -> dict:
-        return await self.rag.run(question=message, max_rounds=1)
+    async def chat(
+        self, message: str, session_id: str, user_id: str, max_rounds: int = 1
+    ) -> dict:
+        return await self.rag.run(question=message, max_rounds=max_rounds)
 
     # multi turn agent
 
@@ -55,8 +57,8 @@ class Pipeline:
 async def main():
     client = GeminiClient(model=config.GEMINI_MODEL)
     pipeline = Pipeline(llm_client=client, qdrant_url=config.QDRANT_CLUSTER_ENDPOINT)
-    result = await pipeline.chat("Explain transformer", "535", "455")
-    print(result)
+    result = await pipeline.chat("Explain design pattern", "535", "455")
+    print(result.get("answer"))
 
 
 if __name__ == "__main__":

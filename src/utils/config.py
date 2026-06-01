@@ -5,6 +5,7 @@ load_dotenv()
 
 
 class Config:
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "studious")
     PROJECT_ID: str = os.getenv("PROJECT_ID")
     LOCATION: str = os.getenv("")
     GCP_DOC_AI_LOCATION: str = os.getenv("GCP_DOC_AI_LOCATION")
@@ -36,6 +37,7 @@ class Config:
     EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", 100))
 
     VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", 1356))
+    MAX_RETRIEVAL_ROUND = int(os.getenv("MAX_RETRIEVAL_ROUND", 1))
 
 
 config = Config()

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from qdrant_client.http.models import PointStruct
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
-from utils.config import config
+from src.utils.config import config
 from src.ingestion.chunk import Chunk
 
 

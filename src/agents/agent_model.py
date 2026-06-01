@@ -1,6 +1,8 @@
 from enum import Enum
 from dataclasses import dataclass, field
 
+from src.utils.config import config
+
 
 class RetrievalDecision(Enum):
     SUFFICIENT = "sufficient"
@@ -28,7 +30,7 @@ class AgentState:
     retrieval_rounds: list[RetrievalRound] = field(default_factory=list)
     accepted_chunks: list[dict] = field(default_factory=list)
 
-    max_retrieval_rounds: int = 4
+    max_retrieval_rounds: int = config.MAX_RETRIEVAL_ROUND
     current_round: int = 0
     is_complete: bool = False
 
