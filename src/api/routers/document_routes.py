@@ -15,3 +15,5 @@ def create_document_routes(processor: Processor):
         return await processor.ingest_document(
             file_path=file_path, doc_id=doc_id, chunking_strategy=chunking_strategy
         )
+
+    return router

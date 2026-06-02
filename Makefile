@@ -9,4 +9,4 @@ format:
 	black .
 
 run-server:
-	uvicorn src.api.main:app --reload
+	python src/api/main.py

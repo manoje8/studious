@@ -8,4 +8,6 @@ def create_query_routes(rag, api_key: Optional[str] = None, top_k: int = 60):
 
     @router.post("/query")
     async def create_query(question: str):
-        return await rag.chat(question, max_rounds=1)
+        return await rag.chat(question, max_rounds=1, session_id="535", user_id="455")
+
+    return router

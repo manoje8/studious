@@ -7,7 +7,6 @@ class SparseSearchIndex:
     """In-memory BM25 index built from your chunks at ingestion time."""
 
     def __init__(self):
-        logfire.configure(service_name="Sparse Search Index")
         self.index: BM25Okapi | None = None
         self.chunks: list[dict] = []
 

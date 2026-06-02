@@ -14,7 +14,6 @@ class HybridSearch:
         dense_top_k: int = 20,
         sparse_top_k: int = 20,
     ):
-        logfire.configure(service_name="Hybrid search")
         self.storage_service = storage_service
         self.embedding_service = embedding_service
         self.sparse_index = sparse_index

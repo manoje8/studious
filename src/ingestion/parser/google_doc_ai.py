@@ -14,7 +14,6 @@ from src.utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
 class GoogleDocAI(Parser):
     def __init__(self):
         super().__init__()
-        logfire.configure(service_name=self.__class__.__name__)
         self.client = documentai.DocumentProcessorServiceClient()
 
     def parse_pdf(

@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -6,6 +8,9 @@ load_dotenv()
 
 class Config:
     PROJECT_NAME: str = os.getenv("PROJECT_NAME", "studious")
+    PORT: int = int(os.getenv("PORT", 8000))
+    HOST: str = os.getenv("HOST", "localhost")
+
     PROJECT_ID: str = os.getenv("PROJECT_ID")
     LOCATION: str = os.getenv("")
     GCP_DOC_AI_LOCATION: str = os.getenv("GCP_DOC_AI_LOCATION")
@@ -38,6 +43,9 @@ class Config:
 
     VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", 1356))
     MAX_RETRIEVAL_ROUND = int(os.getenv("MAX_RETRIEVAL_ROUND", 1))
+
+    CACHE_DIR = Path(".cache/doc_parser")
+    CACHE_MANIFEST = CACHE_DIR / "manifest.json"
 
 
 config = Config()

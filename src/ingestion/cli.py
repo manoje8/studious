@@ -2,6 +2,9 @@ import argparse
 import json
 import asyncio
 from pathlib import Path
+
+import logfire
+
 from src.ingestion.processor import Processor
 
 
@@ -66,6 +69,7 @@ def parse_args():
 
 
 async def main():
+    logfire.configure(service_name="PROCESS CLI")
     args = parse_args()
     processor = Processor()
 

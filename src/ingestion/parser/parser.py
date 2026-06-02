@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Union, Optional
 
-import logfire
 import trafilatura
 from bs4 import BeautifulSoup
 
@@ -9,9 +8,6 @@ from src.utils.constants import SKIP_TAGS, HEADING_TAGS, BLOCK_TAGS
 
 
 class Parser:
-    def __init__(self) -> None:
-        logfire.configure(service_name=self.__class__.__name__)
-
     @classmethod
     def _parse_inline_markdown(cls, text: str):
         """Process inline markdown formatting (bold, italic, code, links)"""

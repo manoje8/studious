@@ -7,7 +7,7 @@ from src.agents.hybrid_search import HybridSearch
 from src.agents.query_expander import QueryExpander
 from src.agents.retrieval import RetrievalAgent
 from src.ingestion.embedding import EmbeddingService
-from src.llm.gemini import GeminiClient
+from src.llm.groq import GroqClient
 from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
@@ -17,7 +17,6 @@ from src.utils.config import config
 class Pipeline:
     # TODO: redis_url, db_client in params
     def __init__(self, llm_client, qdrant_url):
-        logfire.configure(service_name="RAG Pipeline")
         embedding_service = EmbeddingService(model_name=config.EMBEDDING_MODEL_NAME)
         storage_service = QdrantStorageService(url=qdrant_url)
         sparse_index = SparseSearchIndex()
@@ -55,11 +54,12 @@ class Pipeline:
 
 
 async def main():
-    client = GeminiClient(model=config.GEMINI_MODEL)
+    client = GroqClient(model="llama-3.3-70b-versatile")
     pipeline = Pipeline(llm_client=client, qdrant_url=config.QDRANT_CLUSTER_ENDPOINT)
-    result = await pipeline.chat("Explain design pattern", "535", "455")
+    result = await pipeline.chat("Explain Structural design pattern", "535", "455")
     print(result.get("answer"))
 
 
 if __name__ == "__main__":
+    logfire.configure(service_name="Studious")
     asyncio.run(main())

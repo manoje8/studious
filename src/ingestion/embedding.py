@@ -33,7 +33,6 @@ class EmbeddingService:
         max_retries: int = 3,
         retry_delay: float = 1.0,
     ):
-        logfire.configure(service_name="Embedding Service")
         vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
         self.model = TextEmbeddingModel.from_pretrained(model_name)
         self.model_name = model_name

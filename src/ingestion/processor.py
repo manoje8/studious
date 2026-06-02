@@ -12,11 +12,12 @@ from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
 from src.utils.constants import GOOGLE_DOC_AI, HTML_FORMATS, OFFICE_FORMATS
 from src.utils.config import config
+from src.utils.doc_cache import DocumentCache
 
 
 class Processor:
-    def __init__(self):
-        logfire.configure(service_name=self.__class__.__name__)
+    def __init__(self, cache_dir: str | None = None):
+        self.kwags = {"parser": "google_doc_ai", "parser_method": "auto"}
 
         self.embedding_service = EmbeddingService(
             model_name=config.EMBEDDING_MODEL_NAME,
@@ -29,6 +30,12 @@ class Processor:
             vector_size=self.embedding_service.vector_size,
         )
 
+        self._cache = DocumentCache(
+            cache_dir=(
+                Path(cache_dir) if hasattr(config, "cache_dir") else config.CACHE_DIR
+            )
+        )
+
     def _get_parser(self, parser_type: str):
         parser_name = parser_type.strip().lower()
 
@@ -37,12 +44,13 @@ class Processor:
         else:
             raise ValueError(f"Unsupported Parser type: {parser_type}")
 
-    def _generate_cache_key(self, file_path: Path, parse_method: str = None):
-        m_time = file_path.stat().st_mtime
+    def _generate_cache_key(self, file_path: Path, parse_method: str = None) -> str:
+        mtime = file_path.stat().st_mtime
 
         config_dict = {
-            "file_path": file_path,
-            "m_time": m_time,
+            "file_path": str(file_path),
+            "mtime": mtime,
+            "parser": self.kwags.get("parser", "google_doc_ai"),
             "parse_method": parse_method,
         }
 
@@ -54,7 +62,17 @@ class Processor:
     def _get_cached_result(
         self, cache_key: str, file_path: Path, parse_method: str = None
     ):
-        pass
+        return self._cache.get(cache_key)
+
+    def _store_cache_result(
+        self,
+        cache_key: str,
+        content_list: list[dict],
+        file_path: Path,
+        parser: str,
+        parse_method: str = None,
+    ):
+        self._cache.store(cache_key, content_list, file_path, parse_method, parser)
 
     def _generate_doc_id(self, file_path: str | Path, read_bytes: int = 8192) -> str:
         path = Path(file_path).resolve()
@@ -110,6 +128,7 @@ class Processor:
         file_path: str | Path,
         output_dir: str = None,
         parse_method: str = None,
+        parser: str | None = None,
         display_stats: bool = None,
         split_by_character: str | None = None,
         split_by_character_only: str | None = None,
@@ -120,6 +139,16 @@ class Processor:
         logfire.info(f"Starting document parsing: {file_path}")
 
         ext = file_path.suffix.lower()
+
+        # Todo check cache
+        cache_key = self._generate_cache_key(file_path, parse_method)
+
+        cache_result = self._get_cached_result(cache_key, file_path, parse_method)
+
+        if cache_result is not None:
+            logfire.info(f"Cache HIT - Returning cached result for {file_path}")
+            doc_id = self._generate_doc_id(file_path)
+            return cache_result, doc_id
 
         try:
             doc_parser = self._get_parser(GOOGLE_DOC_AI)
@@ -166,7 +195,9 @@ class Processor:
         if len(content_list) == 0:
             raise ValueError("Parsing failed: No content extracted")
 
-        # TODO: Implement Cache result
+        self._store_cache_result(
+            cache_key, content_list, file_path, parse_method, parser
+        )
 
         doc_id = self._generate_doc_id(file_path)
 
@@ -194,11 +225,16 @@ class Processor:
         doc_id: str | None = None,
         chunking_strategy: str | None = None,
         split_by_character: str = "\n\n",
+        parser: str | None = None,
+        parser_method: str = "auto",
     ):
         file_path = Path(file_path)
 
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
+
+        if parser:
+            self.kwags.parser = parser
 
         content_list, doc_id = await self.process_document_complete(
             file_path=file_path,
