@@ -72,7 +72,9 @@ class Processor:
         parser: str,
         parse_method: str = None,
     ):
-        self._cache.store(cache_key, content_list, file_path, parse_method, parser)
+        self._cache.store(
+            cache_key, content_list, file_path, parse_method=parse_method, parser=parser
+        )
 
     def _generate_doc_id(self, file_path: str | Path, read_bytes: int = 8192) -> str:
         path = Path(file_path).resolve()

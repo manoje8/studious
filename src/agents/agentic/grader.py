@@ -27,8 +27,6 @@ class GraderAgent:
             result = await self.llm.complete(prompt)
             grade = result.parsed_json
 
-            print(grade)
-
             if grade["relevant"]:
                 chunk["grade_reason"] = grade["reason"]
                 accepted.append(chunk)
@@ -39,7 +37,5 @@ class GraderAgent:
                 )
 
         logfire.info(f"Grader accepted {len(accepted)}/{len(chunks)} chunks")
-
-        print("__ACCEPTED__", accepted)
 
         return accepted

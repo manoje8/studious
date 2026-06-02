@@ -53,7 +53,7 @@ class EmbeddingService:
         if not text:
             raise ValueError("Cannot embed empty text")
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.to_thread()
         for attempt in range(self.max_retries):
             try:
                 inputs = [TextEmbeddingInput(text, task_type="RETRIEVAL_QUERY")]

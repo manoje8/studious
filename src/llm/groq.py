@@ -12,5 +12,5 @@ class GroqClient(BaseLLM):
 
     async def complete(self, prompt: str, max_token: int = 1024) -> LLMResponse:
         message = [{"role": "user", "content": prompt}]
-        response = self.client.invoke(message)
+        response = self.client.ainvoke(message)
         return LLMResponse(response.content)

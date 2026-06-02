@@ -1,24 +1,21 @@
 import logfire
 from flashrank import Ranker, RerankRequest
 
-_ranker = None
-
 
 class Reranker:
     def __init__(self, top_k: int = 5):
         self.top_k = top_k
+        self._ranker = None
 
     def _get_ranker(self) -> Ranker:
-        global _ranker
-
-        if _ranker is None:
+        if self._ranker is None:
             logfire.info("Initializing re-ranking")
             try:
-                _ranker = Ranker(cache_dir="/tmp/flashrank")
+                self._ranker = Ranker(cache_dir="/tmp/flashrank")
             except Exception:
-                _ranker = Ranker()
+                self._ranker = Ranker()
 
-        return _ranker
+        return self._ranker
 
     async def rerank(self, query: str, candidates: list[dict]) -> list[dict]:
         if not candidates:

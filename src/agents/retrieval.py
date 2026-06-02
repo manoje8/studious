@@ -1,5 +1,3 @@
-import json
-
 from src.agents.agent_model import AgentState, RetrievalRound, RetrievalDecision
 from src.agents.hybrid_search import HybridSearch
 from src.agents.query_expander import QueryExpander
@@ -70,8 +68,6 @@ class RetrievalAgent:
     ) -> RetrievalRound:
         results = await self.retrieve(query, original_question, state.doc_id_filter)
 
-        print(json.dumps(results, indent=2, default=str))
-
         if not results:
             return RetrievalRound(
                 query_used=query,
@@ -112,7 +108,5 @@ class RetrievalAgent:
         """
 
         response = await self.llm.complete(prompt)
-
-        print(response.text)
 
         return response.text

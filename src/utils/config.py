@@ -12,7 +12,7 @@ class Config:
     HOST: str = os.getenv("HOST", "localhost")
 
     PROJECT_ID: str = os.getenv("PROJECT_ID")
-    LOCATION: str = os.getenv("")
+    LOCATION: str = os.getenv("LOCATION")
     GCP_DOC_AI_LOCATION: str = os.getenv("GCP_DOC_AI_LOCATION")
     GCP_DOC_AI_PROCESSOR_ID: str = os.getenv("GCP_DOC_AI_PROCESSOR_ID")
     GCP_RAW_BUCKET: str = os.getenv("GCP_RAW_BUCKET")

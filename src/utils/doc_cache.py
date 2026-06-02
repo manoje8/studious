@@ -119,7 +119,7 @@ class DocumentCache:
     def stats(self) -> dict:
         total_bytes = sum(
             (self.cache_dir / v["filename"]).stat().st_size
-            for v in self._manifest.items()
+            for v in self._manifest.values()
             if (self.cache_dir / v["filename"]).exists()
         )
 
