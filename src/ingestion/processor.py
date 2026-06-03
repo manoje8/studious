@@ -154,6 +154,10 @@ class Processor:
 
         try:
             doc_parser = self._get_parser(GOOGLE_DOC_AI)
+
+            if not doc_parser.check_installation():
+                raise ImportError("Required package is not installed")
+
             if ext in [".pdf"]:
                 logfire.info("Detected PDF file, parsing the pdf...")
 

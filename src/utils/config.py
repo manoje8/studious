@@ -47,5 +47,10 @@ class Config:
     CACHE_DIR = Path(".cache/doc_parser")
     CACHE_MANIFEST = CACHE_DIR / "manifest.json"
 
+    # Docling
+    TABLE_MODE = os.getenv("TABLE_MODE", "fast")
+    DO_TABLES = os.getenv("DO_TABLES", False)
+    DO_OCR = os.getenv("DO_OCR", False)
+
 
 config = Config()

@@ -10,3 +10,6 @@ format:
 
 run-server:
 	python src/api/main.py
+
+test:
+	pytest tests/ -v --tb=short
