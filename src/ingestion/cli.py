@@ -27,6 +27,7 @@ def parse_args():
     parse_parser.add_argument("--doc-id", type=str, default=None)
     parse_parser.add_argument("--file-name", type=str, default=None)
 
+    # Ingestion
     ingest_parser = subparsers.add_parser(
         "ingest",
         help="Parse, embed, and store a document in Qdrant.",
@@ -34,7 +35,7 @@ def parse_args():
     ingest_parser.add_argument(
         "file_path", type=str, help="Path to the input document."
     )
-
+    ingest_parser.add_argument("--parse-method", type=str, default=None)
     ingest_parser.add_argument("--split-by-character", type=str, default=None)
 
     ingest_parser.add_argument(
@@ -47,6 +48,7 @@ def parse_args():
         # help="Chunking strategy passed to process_document_complete (default: structure).",
     )
 
+    # Query
     query_parser = subparsers.add_parser(
         "query",
         help="Embed a question and retrieve the most relevant chunks from Qdrant.",
@@ -77,7 +79,7 @@ async def main():
         output_dir = str(Path(args.output_dir)) if args.output_dir else None
 
         content_list = await processor.process_document_complete(
-            file_path=args.file_path,
+            file_path=Path(args.file_path),
             output_dir=output_dir,
             parse_method=args.parse_method,
             display_stats=args.display_stats,
@@ -102,6 +104,7 @@ async def main():
             file_path=args.file_path,
             doc_id=args.doc_id,
             chunking_strategy=args.chunking_strategy,
+            parse_method=args.parse_method,
         )
         print(
             f"Ingestion complete — "

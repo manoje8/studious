@@ -6,6 +6,7 @@ from typing import Dict
 
 import logfire
 
+from src.ingestion.parser.docling_parser import DoclingParser
 from src.ingestion.parser.google_doc_ai import GoogleDocAI
 from src.ingestion.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
@@ -17,7 +18,7 @@ from src.utils.doc_cache import DocumentCache
 
 class Processor:
     def __init__(self, cache_dir: str | None = None):
-        self.kwags = {"parser": "google_doc_ai", "parser_method": "auto"}
+        self.kwags = {"parser_method": "auto"}
 
         self.embedding_service = EmbeddingService(
             model_name=config.EMBEDDING_MODEL_NAME,
@@ -41,6 +42,8 @@ class Processor:
 
         if parser_name == GOOGLE_DOC_AI:
             return GoogleDocAI()
+        elif parser_name == "docling":
+            return DoclingParser()
         else:
             raise ValueError(f"Unsupported Parser type: {parser_type}")
 
@@ -138,7 +141,7 @@ class Processor:
         file_name: str | None = None,
         **kwargs,
     ):
-        logfire.info(f"Starting document parsing: {file_path}")
+        logfire.info(f"Starting document parsing: {parse_method} - {file_path}")
 
         ext = file_path.suffix.lower()
 
@@ -153,7 +156,7 @@ class Processor:
             return cache_result, doc_id
 
         try:
-            doc_parser = self._get_parser(GOOGLE_DOC_AI)
+            doc_parser = self._get_parser(parser_type=parse_method)
 
             if not doc_parser.check_installation():
                 raise ImportError("Required package is not installed")
@@ -228,11 +231,11 @@ class Processor:
     async def ingest_document(
         self,
         file_path: str,
+        parse_method: str,
         doc_id: str | None = None,
         chunking_strategy: str | None = None,
         split_by_character: str = "\n\n",
-        parser: str | None = None,
-        parser_method: str = "auto",
+        parser: str | None = "auto",
     ):
         file_path = Path(file_path)
 
@@ -247,6 +250,7 @@ class Processor:
             doc_id=doc_id,
             chunking_strategy=chunking_strategy,
             split_by_character=split_by_character,
+            parse_method=parse_method,
         )
         logfire.info(f"Stage 1 complete: {len(content_list)} content list")
 
