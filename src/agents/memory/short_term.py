@@ -1,5 +1,6 @@
 import json
 
+import logfire
 import redis.asyncio as redis
 from uuid import uuid4
 
@@ -52,6 +53,8 @@ class ShortTermMemoryManager:
         session = ConversationSession(session_id=str(uuid4()), user_id=user_id)
 
         await self._save(session)
+        logfire.info(f"Created session: {session.session_id}")
+        return session
 
     async def append_turn(
         self,
@@ -59,6 +62,6 @@ class ShortTermMemoryManager:
         role: str,
         content: str,
         metadata: dict = None,
-    ):
+    ) -> None:
         session.add_turn(role, content, metadata)
         await self._save(session)

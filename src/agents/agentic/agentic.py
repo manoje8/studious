@@ -8,16 +8,12 @@ from src.agents.agentic.planner import PlannerAgent
 from src.agents.agentic.router import RouterAgent
 from src.agents.agentic.synthesizer import SynthesizerAgent
 from src.agents.retrieval import RetrievalAgent
-from src.ingestion.embedding import EmbeddingService
-from src.services.qdrant import QdrantStorageService
 
 
 class AgenticRAG:
     def __init__(
         self,
         llm_client,
-        storage_service: QdrantStorageService,
-        embedding_service: EmbeddingService,
         retrieval_agent: RetrievalAgent,
     ):
         self.router = RouterAgent(llm_client)
