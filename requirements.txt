@@ -32,6 +32,7 @@ langgraph-checkpoint-postgres
 langchain-google-vertexai
 langchain-groq
 langchain-community
+langgraph-checkpoint-postgres
 langchain-openai
 pydantic>=2.0.0
 
