@@ -52,5 +52,7 @@ class Config:
     DO_TABLES = os.getenv("DO_TABLES", False)
     DO_OCR = os.getenv("DO_OCR", False)
 
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
 
 config = Config()

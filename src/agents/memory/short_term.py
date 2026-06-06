@@ -5,10 +5,11 @@ import redis.asyncio as redis
 from uuid import uuid4
 
 from src.agents.memory.conversation_model import ConversationSession, ConversationTurn
+from src.utils.config import config
 
 
 class ShortTermMemoryManager:
-    def __init__(self, redis_url: str = "redis://localhost:6379"):
+    def __init__(self, redis_url: str = config.REDIS_URL):
         self.redis = redis.from_url(redis_url)
         self.session_ttl = 60 * 60 * 2  # 2 hours
 

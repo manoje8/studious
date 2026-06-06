@@ -1,11 +1,10 @@
 import asyncio
 
 import logfire
-import vertexai
 from dataclasses import dataclass
 
+from google import genai
 from qdrant_client.http.models import PointStruct
-from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
 from src.utils.config import config
 from src.ingestion.chunk import Chunk
@@ -33,8 +32,9 @@ class EmbeddingService:
         max_retries: int = 3,
         retry_delay: float = 1.0,
     ):
-        vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
-        self.model = TextEmbeddingModel.from_pretrained(model_name)
+        self.client = genai.Client(
+            vertexai=True, project=config.PROJECT_ID, location=config.LOCATION
+        )
         self.model_name = model_name
         self.dimensions = dimensions
         self.batch_size = batch_size
@@ -53,18 +53,19 @@ class EmbeddingService:
         if not text:
             raise ValueError("Cannot embed empty text")
 
-        loop = asyncio.to_thread()
         for attempt in range(self.max_retries):
             try:
-                inputs = [TextEmbeddingInput(text, task_type="RETRIEVAL_QUERY")]
-                embedding = await loop.run_in_executor(
-                    None,
-                    lambda: self.model.get_embeddings(
-                        inputs, output_dimensionality=self.dimensions
+                response = await asyncio.to_thread(
+                    self.client.models.embed_content,
+                    model=self.model_name,
+                    contents=text,
+                    config=genai.types.EmbedContentConfig(
+                        task_type="RETRIEVAL_QUERY",
+                        output_dimensionality=self.dimensions,
                     ),
                 )
 
-                return embedding[0].values
+                return response.embeddings[0].values
             except Exception as e:
                 if attempt == self.max_retries - 1:
                     logfire.error(
@@ -83,8 +84,6 @@ class EmbeddingService:
         embedded = []
         total_batches = (len(chunks) + self.batch_size - 1) // self.batch_size
 
-        loop = asyncio.get_event_loop()
-
         for batch_num in range(total_batches):
             start = batch_num * self.batch_size
             end = start + self.batch_size
@@ -98,17 +97,18 @@ class EmbeddingService:
 
             for attempt in range(self.max_retries):
                 try:
-                    inputs = [
-                        TextEmbeddingInput(chunk.text, task_type="RETRIEVAL_DOCUMENT")
-                        for chunk in batch
-                    ]
-                    embeddings = await loop.run_in_executor(
-                        None,
-                        lambda: self.model.get_embeddings(
-                            texts=inputs, output_dimensionality=self.dimensions
+                    batch_texts = [chunk.text for chunk in chunks]
+                    response = await asyncio.to_thread(
+                        self.client.models.embed_content,
+                        model=self.model_name,
+                        contents=batch_texts,
+                        config=genai.types.EmbedContentConfig(
+                            task_type="RETRIEVAL_DOCUMENT",
+                            output_dimensionality=self.dimensions,
                         ),
                     )
-                    for chunk, emb in zip(batch, embeddings):
+
+                    for chunk, emb in zip(batch, response.embeddings):
                         embedded.append(
                             EmbeddedChunk(
                                 chunk=chunk,

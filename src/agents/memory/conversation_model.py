@@ -1,21 +1,21 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 @dataclass
 class ConversationTurn:
     role: str
     content: str
-    timestamp: datetime = field(default_factory=datetime.utcnow())
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict = field(default_factory=dict)
 
 
-@dataclass()
+@dataclass
 class ConversationSession:
     session_id: str
     user_id: str
     turns: list[ConversationTurn] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def add_turn(self, role: str, content: str, metadata: dict = None):
         self.turns.append(

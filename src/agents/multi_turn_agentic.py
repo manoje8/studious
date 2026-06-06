@@ -11,7 +11,7 @@ class MultiTurnAgenticRAGPipeline:
         short_term_memory: ShortTermMemoryManager,
         episodic_memory: EpisodicMemoryManager,
     ):
-        self.rag = (rag_agent,)
+        self.rag = rag_agent
         self.rewriter = QueryRewriter(llm_client)
         self.short_term = short_term_memory
         self.episodic = episodic_memory
