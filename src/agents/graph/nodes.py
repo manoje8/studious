@@ -1,3 +1,4 @@
+from src.agents.agent_model import AgentState
 from src.agents.graph.state import State
 
 
@@ -35,13 +36,13 @@ async def plan(state: State, planner) -> dict:
 
 
 # Retrieve & evaluate
-async def retrieve(state: State, retrieve_agent) -> dict:
+async def retrieve(state: State, retrieval_agent) -> dict:
     sub_q = state["sub_questions"][state["current_sub_question_idx"]]
 
-    round_result = await retrieve_agent.retrieve_and_evaluate(
+    round_result = await retrieval_agent.retrieve_and_evaluate(
         query=state["current_query"],
         original_question=sub_q,
-        state=...,  # Pass agentstate adapter
+        state=AgentState,
     )
 
     return {
@@ -62,7 +63,7 @@ async def retrieve(state: State, retrieve_agent) -> dict:
 async def refine_query(state: State, retrieval_agent) -> dict:
     new_query = await retrieval_agent.generate_refined_query(
         original_question=state["sub_questions"][state["current_sub_question_idx"]],
-        previous_rounds=...,  # Parse from retrieval history
+        previous_rounds=state["retrieval_round"],
     )
 
     return {"current_query": new_query}
@@ -76,7 +77,7 @@ async def next_sub_question(state: State) -> dict:
         "accepted_chunks": state["accepted_chunks"] + last["chunks"],
         "current_sub_question_idx": state["current_sub_question_idx"] + 1,
         "retrieval_round": 0,
-        "current_query": state["sub_questions"][state["current_sub_question_idx"]] + 1,
+        "current_query": state["sub_questions"][state["current_sub_question_idx"] + 1],
     }
 
 

@@ -63,8 +63,9 @@ def build_rag_graph(
     return builder
 
 
-async def compile_graph_with_postgres(conn_string: str, **agent_kwargs):
+async def compile_graph_with_postgres(pool, **agent_kwargs):
     builder = build_rag_graph(**agent_kwargs)
-    checkpointer = AsyncPostgresSaver.from_conn_string(conn_string)
+
+    checkpointer = AsyncPostgresSaver(pool)
     await checkpointer.setup()
     return builder.compile(checkpointer=checkpointer)

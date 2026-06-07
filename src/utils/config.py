@@ -53,6 +53,7 @@ class Config:
     DO_OCR = os.getenv("DO_OCR", False)
 
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+    POSTGRES_CONN_STRING = os.getenv("POSTGRES_CONN_STRING")
 
 
 config = Config()

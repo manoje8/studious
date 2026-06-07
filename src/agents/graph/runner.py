@@ -1,10 +1,10 @@
-class LangGraphPipeline:
+class GraphPipeline:
     def __init__(self, graph, short_term_memory):
         self.graph = graph
         self.short_term = short_term_memory
 
     async def chat(self, user_message: str, session_id: str, user_id: str) -> dict:
-        config = {"configuration": {"thread_id": session_id}}
+        config = {"configurable": {"thread_id": session_id}}
 
         initial_state = {
             "session_id": session_id,

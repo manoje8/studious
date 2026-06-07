@@ -8,7 +8,7 @@ class QueryRewriter:
         self.llm = llm_client
 
     async def rewrite(self, current_message: str, session: ConversationSession) -> dict:
-        if not session.turns:
+        if not session or not session.turns:
             return {
                 "rewritten_query": current_message,
                 "was_rewritten": False,
