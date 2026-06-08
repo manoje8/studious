@@ -106,7 +106,7 @@ class DoclingParser(Parser):
                 # JSON References follow the form "#/<type>/<index>" (e.g. "#/body/0")
                 ref_parts = member_tag.split("/")
                 if len(ref_parts) < 3:
-                    self.logger.warning(
+                    logfire.warning(
                         f"Unexpected $ref format (expected #/<type>/<index>): {member_tag!r}"
                     )
                     continue
@@ -115,7 +115,7 @@ class DoclingParser(Parser):
                 try:
                     member_block = docling_content[member_type][int(member_num)]
                 except (KeyError, ValueError, IndexError) as e:
-                    self.logger.warning(f"Could not resolve $ref {member_tag!r}: {e}")
+                    logfire.warning(f"Could not resolve $ref {member_tag!r}: {e}")
                     continue
                 content_list.extend(
                     self.read_from_block_recursive(
@@ -168,7 +168,7 @@ class DoclingParser(Parser):
                     "page_idx": cnt // 10,
                 }
             except Exception as e:
-                self.logger.warning(f"Failed to process image {num}: {e}")
+                logfire.warning(f"Failed to process image {num}: {e}")
                 return {
                     "type": "text",
                     "text": f"[Image processing failed: {block.get('caption', '')}]",

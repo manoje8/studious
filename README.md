@@ -4,24 +4,6 @@
 
 ---
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Tech Stack](#tech-stack)
-- [Key Features](#key-features)
-- [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Ingestion Pipeline](#ingestion-pipeline)
-- [Agentic Query Pipeline](#agentic-query-pipeline)
-- [Observability](#observability)
-- [Development](#development)
-- [Current Limitations](#current-limitations)
-
----
-
 ## Overview
 
 **Studious** is a learning project that demonstrates how to build a sophisticated, agentic Retrieval-Augmented Generation system from the ground up. It goes well beyond a naive RAG setup by incorporating:
@@ -64,29 +46,49 @@ Raw File (PDF / DOCX / HTML)
   Qdrant Upsert  (batched, idempotent via UUID5)
 ```
 
-### Agentic Query Flow
+### Agentic Graph Flow
 
 ```
-User Question
-      ↓
-  Router Agent          ← classifies: factual | comparative | analytical | summarization
-      ↓
-  Planner Agent         ← decomposes into 2-4 focused sub-questions (skips for factual)
-      ↓
-  ┌─── Per Sub-Question Loop ───┐
-  │  Query Expander             │ ← generates 3 alternative phrasings via LLM
-  │       ↓                     │
-  │  Hybrid Search              │ ← dense (Qdrant) + sparse (BM25*) → RRF merge
-  │       ↓                     │
-  │  Cross-Encoder Reranker     │ ← FlashRank re-scores top candidates
-  │       ↓                     │
-  │  Retrieval Agent            │ ← evaluates quality: sufficient | refine | expand | exhausted
-  │       ↑_____________________│    (self-loop until decision = sufficient or rounds exhausted)
-  └─────────────────────────────┘
-      ↓
-  Grader Agent          ← per-chunk relevance filtering against original question
-      ↓
-  Synthesizer Agent     ← generates final cited answer from accepted chunks
+                        ┌─────────────────────────────────────────┐
+  user_message ─────►   │            ENTRY: rewrite_query         │
+                        └──────────────────┬──────────────────────┘
+                                           │
+                        ┌──────────────────▼──────────────────────┐
+                        │              route                      │
+                        │  (RouterAgent.classify)                 │
+                        └──┬───────────────┬───────────────┬──────┘
+                           │               │               │
+                     factual          analytical      summarization
+                           │               │               │
+                        ┌──▼───────────────▼───────────────▼──────┐
+                        │              plan                       │
+                        │  (PlannerAgent.decompose)               │
+                        └──────────────────┬──────────────────────┘
+                                           │  [sub_questions]
+                        ┌──────────────────▼────────────────────── ┐
+                        │          retrieve  (per sub-q)           │
+                        │  HybridSearch → Reranker → Evaluate      │
+                        └──┬───────────────────────────────────────┘
+                           │
+              ┌────────────┼──────────────────┐
+         sufficient    refine_query      exhausted
+              │            │                  │
+              │     ┌──────▼──────┐           │
+              │     │  refine     │───────────►│
+              │     └─────────────┘           │
+              └────────────┬──────────────────┘
+                           │
+                        ┌──▼──────────────────────────────────────┐
+                        │              grade                      │
+                        │  (GraderAgent.grade_chunks)             │
+                        └──────────────────┬──────────────────────┘
+                                           │
+                        ┌──────────────────▼──────────────────────┐
+                        │            synthesize                   │
+                        │  (SynthesizerAgent.synthesize)          │
+                        └──────────────────┬──────────────────────┘
+                                           │
+                                        END
 ```
 
 \* *BM25 sparse search is implemented but commented out in `hybrid_search.py` pending runtime integration.*
