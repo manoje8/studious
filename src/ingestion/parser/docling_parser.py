@@ -84,10 +84,10 @@ class DoclingParser(Parser):
         self,
         block,
         type: str,
+        output_dir: Path,
         cnt: int,
         num: str,
         docling_content: Dict[str, Any],
-        output_dir: Path = "data",
     ) -> List[Dict[str, Any]]:
         content_list = []
         if not block.get("children"):
@@ -224,7 +224,7 @@ class DoclingParser(Parser):
             elif ext in HTML_FORMATS:
                 return self.parse_html(file_path)
             elif ext in OFFICE_FORMATS:
-                pass
+                return self.parse_office(file_path)
 
             else:
                 raise ValueError(
@@ -232,11 +232,6 @@ class DoclingParser(Parser):
                     f"Docling only supports PDF files, Office formats ({', '.join(OFFICE_FORMATS)}) "
                     f"and HTML formats ({', '.join(HTML_FORMATS)})"
                 )
-
-            converter = self._get_converter()
-            result = converter.convert(str(file_path))
-
-            return result
         except Exception as e:
             logfire.error(f"Error in parse file_path: {str(e)}")
             raise
@@ -254,10 +249,27 @@ class DoclingParser(Parser):
             if not pdf_path.exists():
                 raise FileNotFoundError(f"PDF file does not exist: {pdf_path}")
 
+            name_without_suff = pdf_path.stem
+
             converter = self._get_converter()
             result = converter.convert(str(pdf_path))
 
-            return result
+            doc_dict = result.document.export_to_dict()
+
+            if output_dir:
+                base_output_dir = self._unique_output_dir(output_dir, pdf_path)
+            else:
+                base_output_dir = pdf_path.parent / "docling_output"
+
+            base_output_dir.mkdir(parents=True, exist_ok=True)
+
+            file_subdir = pdf_path.parent / name_without_suff / "docling"
+            content_list = self.read_from_block_recursive(
+                doc_dict["body"], "body", file_subdir, 0, "0", doc_dict
+            )
+
+            return content_list
+
         except Exception as e:
             logfire.error(f"Error in parse pdf: {str(e)}")
             raise
@@ -268,13 +280,62 @@ class DoclingParser(Parser):
             if not html_path.exists():
                 raise FileNotFoundError(f"HTML file does not exist: {html_path}")
 
+            name_without_suff = html_path.stem
+
             if html_path.suffix.lower() not in HTML_FORMATS:
                 raise ValueError(f"Unsupported HTML format: {html_path.suffix}")
 
             converter = self._get_converter()
             result = converter.convert(str(html_path))
 
-            return result
+            doc_dict = result.document.export_to_dict()
+
+            if output_dir:
+                base_output_dir = self._unique_output_dir(output_dir, html_path)
+            else:
+                base_output_dir = html_path.parent / "docling_output"
+
+            base_output_dir.mkdir(parents=True, exist_ok=True)
+
+            file_subdir = html_path.parent / name_without_suff / "docling"
+            content_list = self.read_from_block_recursive(
+                doc_dict["body"], "body", file_subdir, 0, "0", doc_dict
+            )
+
+            return content_list
         except Exception as e:
-            logfire.error(f"Error in parse pdf: {str(e)}")
+            logfire.error(f"Error in parse html: {str(e)}")
+            raise
+
+    def parse_office(self, file_path: Path, output_dir: Optional[str] = None, **kwargs):
+        try:
+            file_path = Path(file_path)
+            if not file_path.exists():
+                raise FileNotFoundError(f"Office file does not exist: {file_path}")
+
+            name_without_suff = file_path.stem
+
+            if file_path.suffix.lower() not in OFFICE_FORMATS:
+                raise ValueError(f"Unsupported Office format: {file_path.suffix}")
+
+            converter = self._get_converter()
+            result = converter.convert(str(file_path))
+
+            doc_dict = result.document.export_to_dict()
+
+            if output_dir:
+                base_output_dir = self._unique_output_dir(output_dir, file_path)
+            else:
+                base_output_dir = file_path.parent / "docling_output"
+
+            base_output_dir.mkdir(parents=True, exist_ok=True)
+
+            file_subdir = file_path.parent / name_without_suff / "docling"
+            content_list = self.read_from_block_recursive(
+                doc_dict["body"], "body", file_subdir, 0, "0", doc_dict
+            )
+
+            return content_list
+        except Exception as e:
+            logfire.error(f"Error in parse office: {str(e)}")
             raise

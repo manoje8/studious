@@ -57,6 +57,7 @@ terraform/.terraform/
 notes.md
 todo.md
 plan.md
+chunking_strategy.md
 data
 .cache
 .benchmarks

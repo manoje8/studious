@@ -6,7 +6,7 @@ import threading
 from src.ingestion.parser.docling_parser import DoclingParser
 
 
-class config:
+class Config:
     TABLE_MODE = "accurate"
     DO_TABLES = True
     DO_OCR = False
@@ -51,6 +51,19 @@ class TestDoclingParser:
             converter_instance.convert.return_value = {"mocked": "result"}
             mock.return_value = converter_instance
             yield mock, converter_instance
+
+    @pytest.fixture
+    def mock_docling_result(self):
+        """Create a mock Docling result object that returns a valid export_to_dict structure"""
+        mock_result = Mock()
+        mock_document = Mock()
+        doc_dict = {
+            "body": {"children": [{"$ref": "#/texts/0"}]},
+            "texts": [{"label": "paragraph", "orig": "Hello World"}],
+        }
+        mock_document.export_to_dict.return_value = doc_dict
+        mock_result.document = mock_document
+        return mock_result
 
     # Test Initialization
     def test_initialization(self, parser):
@@ -180,16 +193,20 @@ class TestDoclingParser:
         with pytest.raises(FileNotFoundError):
             parser.parse_doc(non_existent_path)
 
-    def test_parse_doc_office_format(self, parser, mock_office_path):
-        """Test parsing an Office format file (currently passes)"""
+    def test_parse_doc_office_format(
+        self, parser, mock_office_path, mock_docling_result
+    ):
+        """Test parsing an Office format file"""
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"office": "result"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_doc(mock_office_path)
 
-            assert result == {"office": "result"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
             mock_converter.convert.assert_called_once_with(str(mock_office_path))
 
     def test_parse_doc_case_insensitive_extension(self, parser, tmp_path):
@@ -205,16 +222,18 @@ class TestDoclingParser:
             assert result == {"pdf": "result"}
 
     # Test parse_pdf
-    def test_parse_pdf_success(self, parser, mock_pdf_path):
+    def test_parse_pdf_success(self, parser, mock_pdf_path, mock_docling_result):
         """Test successful PDF parsing"""
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"parsed": "pdf_result"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_pdf(mock_pdf_path)
 
-            assert result == {"parsed": "pdf_result"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
             mock_converter.convert.assert_called_once_with(str(mock_pdf_path))
 
     def test_parse_pdf_file_not_found(self, parser):
@@ -224,33 +243,37 @@ class TestDoclingParser:
         with pytest.raises(FileNotFoundError):
             parser.parse_pdf(non_existent_path)
 
-    def test_parse_pdf_with_path_object(self, parser, tmp_path):
+    def test_parse_pdf_with_path_object(self, parser, tmp_path, mock_docling_result):
         """Test that parse_pdf accepts Path objects"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"result": "ok"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_pdf(pdf_path)
 
-            assert result == {"result": "ok"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
 
-    def test_parse_pdf_with_string_path(self, parser, tmp_path):
+    def test_parse_pdf_with_string_path(self, parser, tmp_path, mock_docling_result):
         """Test that parse_pdf accepts string paths"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"result": "ok"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_pdf(str(pdf_path))
 
-            assert result == {"result": "ok"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
 
     def test_parse_pdf_converter_error(self, parser, mock_pdf_path):
         """Test error handling in parse_pdf"""
@@ -263,16 +286,18 @@ class TestDoclingParser:
                 parser.parse_pdf(mock_pdf_path)
 
     # Test parse_html
-    def test_parse_html_success(self, parser, mock_html_path):
+    def test_parse_html_success(self, parser, mock_html_path, mock_docling_result):
         """Test successful HTML parsing"""
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"parsed": "html_result"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_html(mock_html_path)
 
-            assert result == {"parsed": "html_result"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
             mock_converter.convert.assert_called_once_with(str(mock_html_path))
 
     def test_parse_html_file_not_found(self, parser):
@@ -290,37 +315,43 @@ class TestDoclingParser:
         with pytest.raises(ValueError, match="Unsupported HTML format"):
             parser.parse_html(txt_path)
 
-    def test_parse_html_with_htm_extension(self, parser, tmp_path):
+    def test_parse_html_with_htm_extension(self, parser, tmp_path, mock_docling_result):
         """Test that parse_html accepts .htm files"""
         htm_path = tmp_path / "test.htm"
         htm_path.touch()
 
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"result": "ok"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_html(htm_path)
 
-            assert result == {"result": "ok"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
 
-    def test_parse_html_with_xhtml_extension(self, parser, tmp_path):
+    def test_parse_html_with_xhtml_extension(
+        self, parser, tmp_path, mock_docling_result
+    ):
         """Test that parse_html accepts .xhtml files"""
         xhtml_path = tmp_path / "test.xhtml"
         xhtml_path.touch()
 
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"result": "ok"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_html(xhtml_path)
 
-            assert result == {"result": "ok"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
 
     # Integration tests (if docling is available)
     @pytest.mark.integration
-    def test_parse_pdf_integration(self, parser, tmp_path):
+    def test_parse_pdf_integration(self, parser, tmp_path, mock_docling_result):
         """Integration test for parsing an actual PDF file"""
         # This test requires docling to be installed
         try:
@@ -335,12 +366,14 @@ class TestDoclingParser:
         # Mock the converter to avoid actual PDF processing
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
-            mock_converter.convert.return_value = {"document": "content"}
+            mock_converter.convert.return_value = mock_docling_result
             mock_get_converter.return_value = mock_converter
 
             result = parser.parse_pdf(pdf_path)
 
-            assert result == {"document": "content"}
+            assert isinstance(result, list)
+            assert len(result) == 1
+            assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
             mock_converter.convert.assert_called_once_with(str(pdf_path))
 
     # Edge cases and additional tests

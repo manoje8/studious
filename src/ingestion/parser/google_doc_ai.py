@@ -18,14 +18,14 @@ class GoogleDocAI(Parser):
 
     def parse_pdf(
         self,
-        pdf_path: Union[str, Path],
+        file_path: Union[str, Path],
         output_dir: Optional[str] = None,
         method: str = "auto",
         lang: Optional[str] = None,
         **kwargs,
     ):
         try:
-            pdf_path = Path(pdf_path)
+            pdf_path = Path(file_path)
 
             if not pdf_path.exists():
                 msg = f"PDF file doesn't exist: {pdf_path}"

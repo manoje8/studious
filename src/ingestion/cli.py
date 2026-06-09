@@ -44,8 +44,8 @@ def parse_args():
     ingest_parser.add_argument(
         "--chunking-strategy",
         type=str,
-        # default="structure",
-        # help="Chunking strategy passed to process_document_complete (default: structure).",
+        default="structure",
+        help="Chunking strategy passed to process_document_complete (default: structure).",
     )
 
     # Query

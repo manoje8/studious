@@ -166,7 +166,7 @@ class Processor:
 
                 content_list = await asyncio.to_thread(
                     doc_parser.parse_pdf,
-                    pdf_path=file_path,
+                    file_path=file_path,
                     method=parse_method,
                     **kwargs,
                 )
@@ -242,13 +242,9 @@ class Processor:
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        if parser:
-            self.kwags.parser = parser
-
         content_list, doc_id = await self.process_document_complete(
             file_path=file_path,
             doc_id=doc_id,
-            chunking_strategy=chunking_strategy,
             split_by_character=split_by_character,
             parse_method=parse_method,
         )

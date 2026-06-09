@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 from typing import Union, Optional
 
@@ -42,6 +43,18 @@ class Parser:
         text = re.sub(r"~~(.*?)~~", r"<strike>\1</strike>", text)
 
         return text
+
+    @staticmethod
+    def _unique_output_dir(
+        base_dir: Union[str, Path], file_path: Union[str, Path]
+    ) -> Path:
+        """
+        Create a unique output subdirectory for a file to prevent same-name collisions
+        """
+        file_path = Path(file_path).resolve()
+        stem = file_path.stem
+        path_hash = hashlib.md5(str(file_path).encode()).hexdigest()[:8]
+        return Path(base_dir) / f"{stem}_{path_hash}"
 
     def extract_html_content(self, html: str) -> list[dict]:
         content = trafilatura.extract(
