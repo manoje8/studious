@@ -35,3 +35,8 @@ HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 
 
 GOOGLE_DOC_AI = "google_doc_ai"
+
+
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 50
+MIN_CHUNK_SIZE = 50

@@ -75,6 +75,7 @@ jobs:
             pydantic>=2.0.0 \
             python-dotenv \
             loguru \
+            logfire \
             docling
 
       - name: Install project in editable mode

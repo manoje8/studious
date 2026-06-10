@@ -192,7 +192,7 @@ class Chunking:
         chunk_index = 0
 
         def flush():
-            nonlocal chunk_index
+            nonlocal chunk_index, current_tokens
             if current_tokens:
                 chunks.append(
                     Chunk(
@@ -204,6 +204,7 @@ class Chunking:
                     )
                 )
                 chunk_index += 1
+                current_tokens = current_tokens[-overlap:] if overlap > 0 else []
 
         for segment in segments:
             words = segment.split()
@@ -213,11 +214,9 @@ class Chunking:
                 current_tokens.extend(words[:available])
                 words = words[available:]
                 flush()
-                current_tokens = current_tokens[-overlap:]
 
             if len(current_tokens) + len(words) > chunk_size:
                 flush()
-                current_tokens = current_tokens[-overlap:]
 
             current_tokens.extend(words)
 
@@ -270,8 +269,8 @@ class Chunking:
         return chunks
 
     def build_parent_child_chunk(
-        self, chunks: list[dict], parent_window: int = 3
-    ) -> list[dict]:
+        self, chunks: list[Chunk], parent_window: int = 3
+    ) -> list[Chunk]:
         """
         Each chunk gets a parent_id pointing to a broader context window.
         Retrieve by child, re-rank or expand using parent at query time.
@@ -286,7 +285,7 @@ class Chunking:
             start = max(0, i - parent_window // 2)
             end = min(len(chunks), i + parent_window // 2 + 1)
 
-            parent_text = " ".join(c.get("text", "") for c in chunks[start:end])
+            parent_text = " ".join(c.text for c in chunks[start:end])
 
             enriched.append(
                 Chunk(
