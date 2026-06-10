@@ -124,7 +124,7 @@ class TestDoclingParser:
                 mock_config.TABLE_MODE = "accurate"
                 mock_config.DO_TABLES = True
                 mock_config.DO_OCR = False
-                # converter1 = parser._get_converter()
+                converter1 = parser._get_converter()  # noqa
 
             # Clear cache to simulate different config
             parser._converter_cache.clear()
@@ -134,7 +134,7 @@ class TestDoclingParser:
                 mock_config.TABLE_MODE = "fast"
                 mock_config.DO_TABLES = True
                 mock_config.DO_OCR = False
-                # converter2 = parser._get_converter()
+                converter2 = parser._get_converter()  # noqa
 
             # Should create different converters for different configs
             assert mock_converter.call_count == 2

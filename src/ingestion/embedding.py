@@ -7,7 +7,7 @@ from google import genai
 from qdrant_client.http.models import PointStruct
 
 from src.utils.config import config
-from src.ingestion.chunk import Chunk
+from src.ingestion.chunking.chunk import Chunk
 
 
 @dataclass
@@ -97,7 +97,7 @@ class EmbeddingService:
 
             for attempt in range(self.max_retries):
                 try:
-                    batch_texts = [chunk.text for chunk in chunks]
+                    batch_texts = [chunk.text for chunk in batch]
                     response = await asyncio.to_thread(
                         self.client.models.embed_content,
                         model=self.model_name,
@@ -116,6 +116,7 @@ class EmbeddingService:
                                 model_name=self.model_name,
                             )
                         )
+                    break
 
                 except Exception as e:
                     if attempt == self.max_retries - 1:

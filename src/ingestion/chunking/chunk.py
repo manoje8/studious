@@ -38,6 +38,9 @@ class Chunk:
     page_numbers: list[int] = field(default_factory=list)
     block_types: list[str] = field(default_factory=list)
     token_count: int = 0
+    parent_text: str = ""
+    parent_window_start: int = 0
+    parent_window_end: int = 0
 
     def to_quant_payload(self) -> dict:
         return {
@@ -265,3 +268,41 @@ class Chunking:
         logfire.info(f"Generated {len(chunks)} chunks")
 
         return chunks
+
+    def build_parent_child_chunk(
+        self, chunks: list[dict], parent_window: int = 3
+    ) -> list[dict]:
+        """
+        Each chunk gets a parent_id pointing to a broader context window.
+        Retrieve by child, re-rank or expand using parent at query time.
+
+        :param chunks:
+        :param parent_window:
+        :return:
+        """
+
+        enriched = []
+        for i, chunk in enumerate(chunks):
+            start = max(0, i - parent_window // 2)
+            end = min(len(chunks), i + parent_window // 2 + 1)
+
+            parent_text = " ".join(c.get("text", "") for c in chunks[start:end])
+
+            enriched.append(
+                Chunk(
+                    text=chunk.text,
+                    chunk_index=chunk.chunk_index,
+                    doc_id=chunk.doc_id,
+                    source_file=chunk.source_file,
+                    chunk_type=chunk.chunk_type,
+                    section_title=chunk.section_title,
+                    page_numbers=chunk.page_numbers,
+                    block_types=chunk.block_types,
+                    token_count=chunk.token_count,
+                    parent_text=parent_text,
+                    parent_window_start=start,
+                    parent_window_end=end,
+                )
+            )
+
+        return enriched

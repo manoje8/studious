@@ -8,10 +8,15 @@ import logfire
 
 from src.ingestion.parser.docling_parser import DoclingParser
 from src.ingestion.parser.google_doc_ai import GoogleDocAI
-from src.ingestion.chunk import Chunking
+from src.ingestion.chunking.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
-from src.utils.constants import GOOGLE_DOC_AI, HTML_FORMATS, OFFICE_FORMATS
+from src.utils.constants import (
+    GOOGLE_DOC_AI,
+    HTML_FORMATS,
+    OFFICE_FORMATS,
+    TEXT_FORMATS,
+)
 from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
 
@@ -102,6 +107,9 @@ class Processor:
 
         chunking = Chunking()
 
+        if not chunking_strategy:
+            chunking_strategy = self._select_chunking_strategy(file_path)
+
         if chunking_strategy == "structure":
             chunks = chunking.chunk_by_structure(
                 content_list=content_list,
@@ -126,7 +134,20 @@ class Processor:
             f"Chunking complete: {len(chunks)} chunks produced from {len(content_list)} blocks"
         )
 
-        return chunks
+        enriched = chunks.build_parent_child_chunk(chunks)
+        logfire.info(f"Build parent child chunk: {len(enriched)}")
+
+        return enriched
+
+    def _select_chunking_strategy(self, file_path: Path) -> str:
+        suffix = file_path.suffix.lower()
+
+        if suffix in HTML_FORMATS | TEXT_FORMATS:
+            return "structure"
+        elif suffix in OFFICE_FORMATS or suffix == ".pdf":
+            return "recursive"
+        else:
+            return "splitter"
 
     async def process_document_complete(
         self,
