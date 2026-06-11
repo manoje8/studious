@@ -25,7 +25,7 @@ class SparseSearchIndex:
             raise RuntimeError("BM25 index not built. Call build() first.")
 
         tokenized_query = query.lower().split()
-        score = self.index.get_batch_scores(tokenized_query)
+        score = self.index.get_scores(tokenized_query)
 
         top_indices = np.argsort(score)[::-1][:top_k]
 

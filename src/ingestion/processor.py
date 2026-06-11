@@ -11,6 +11,7 @@ from src.ingestion.parser.google_doc_ai import GoogleDocAI
 from src.ingestion.chunking.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
+from src.services.sparse_index import SparseSearchIndex
 from src.utils.constants import (
     GOOGLE_DOC_AI,
     HTML_FORMATS,
@@ -19,6 +20,7 @@ from src.utils.constants import (
 )
 from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
+from src.utils.helper import bootstrap_sparse_index
 
 
 class Processor:
@@ -41,6 +43,8 @@ class Processor:
                 Path(cache_dir) if hasattr(config, "cache_dir") else config.CACHE_DIR
             )
         )
+
+        self.sparse_index = SparseSearchIndex()
 
     def _get_parser(self, parser_type: str):
         parser_name = parser_type.strip().lower()
@@ -280,6 +284,10 @@ class Processor:
 
         embedded_chunks = await self.embedding_service.embed_chunks(chunks)
         logfire.info(f"Stage 3 complete: {len(embedded_chunks)} vectors")
+
+        # Rebuild sparse index to stay in sync
+        logfire.info("Rebuilding sparse index...")
+        await bootstrap_sparse_index(self.storage_service, self.sparse_index)
 
         await self.storage_service.upsert_embedded_chunks(embedded_chunks)
         logfire.info("Stage 4 complete: stored in Qdrant")

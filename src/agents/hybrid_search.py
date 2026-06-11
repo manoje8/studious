@@ -51,7 +51,7 @@ class HybridSearch:
         self, queries: list[str], doc_id_filter: str | None = None
     ) -> list[dict]:
         all_dense_result = []
-        # all_sparse_result = []
+        all_sparse_result = []
 
         for query in queries:
             query_vector = await self.embedding_service.embed_single(query)
@@ -63,12 +63,12 @@ class HybridSearch:
 
             all_dense_result.append(dense_result)
 
-            # sparse_result = self.sparse_index.search(query, top_k=self.sparse_top_k)
-            # all_sparse_result.append(sparse_result)
+            sparse_result = self.sparse_index.search(query, top_k=self.sparse_top_k)
+            all_sparse_result.append(sparse_result)
 
         dense_merged = self._reciprocal_rank_fusion(all_dense_result)
-        # sparse_merged = self._reciprocal_rank_fusion(all_sparse_result)
-        final_merged = self._reciprocal_rank_fusion([dense_merged])
+        sparse_merged = self._reciprocal_rank_fusion(all_sparse_result)
+        final_merged = self._reciprocal_rank_fusion([dense_merged, sparse_merged])
 
         logfire.info(
             f"Hybrid search: {len(final_merged)} unique candidates "

@@ -68,15 +68,19 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install pytest pytest-cov
-          # Install only the lightweight packages needed for unit tests
-          # Heavy cloud/ML deps are mocked in tests
+          pip install pytest pytest-cov pytest-asyncio
           pip install \
             pydantic>=2.0.0 \
             python-dotenv \
             loguru \
             logfire \
-            docling
+            docling \
+            trafilatura \
+            google-genai \
+            qdrant-client \
+            rank-bm25 \
+            numpy \
+            ascii_colors
 
       - name: Install project in editable mode
         run: pip install -e .

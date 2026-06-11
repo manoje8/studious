@@ -28,7 +28,7 @@ from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
 from src.utils.config import config
-from src.utils.helper import check_env
+from src.utils.helper import check_env, bootstrap_sparse_index
 
 pipeline: GraphPipeline | None = None
 
@@ -51,6 +51,10 @@ async def lifespan(app: FastAPI):
     embedding_service = EmbeddingService(model_name=config.EMBEDDING_MODEL_NAME)
     storage_service = QdrantStorageService(url=config.QDRANT_CLUSTER_ENDPOINT)
     sparse_index = SparseSearchIndex()
+
+    logfire.info("Rebuilding sparse index...")
+    await bootstrap_sparse_index(storage_service, sparse_index)
+
     hybrid_search = HybridSearch(
         storage_service=storage_service,
         embedding_service=embedding_service,

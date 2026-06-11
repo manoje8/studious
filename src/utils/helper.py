@@ -18,3 +18,8 @@ def check_env():
                 return False
         return True
     return True
+
+
+async def bootstrap_sparse_index(storage_service, sparse_index):
+    all_chunks = await storage_service.scroll_all_chunks()
+    sparse_index.build(all_chunks)

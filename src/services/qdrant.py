@@ -136,3 +136,36 @@ class QdrantStorageService:
             }
             for r in result.points
         ]
+
+    async def scroll_all_chunks(self) -> list[dict]:
+        """Scroll through all chunks in Qdrant and return them as a list of dicts."""
+
+        all_chunks = []
+        next_page_offset = None
+
+        while True:
+            result, next_page_offset = await self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=None,
+                limit=500,
+                with_payload=True,
+                with_vectors=False,
+                offset=next_page_offset,
+            )
+
+            for point in result:
+                all_chunks.append(
+                    {
+                        "text": point.payload.get("text", ""),
+                        "doc_id": point.payload.get("doc_id", ""),
+                        "chunk_index": point.payload.get("chunk_index"),
+                        "section_title": point.payload.get("section_title", ""),
+                        "source_file": point.payload.get("source_file", ""),
+                    }
+                )
+
+            if next_page_offset is None:
+                break
+
+        logfire.info(f"Scrolled {len(all_chunks)} chunks from Qdrant")
+        return all_chunks
