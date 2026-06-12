@@ -1,25 +1,62 @@
+from __future__ import annotations
+
+from typing import Union
+
 from src.agents.agent_model import AgentState
+
+
+def _get(state: Union[AgentState, dict], key: str, attr: str | None = None):
+    """Unified accessor for both AgentState dataclass and LangGraph State dict."""
+    if isinstance(state, dict):
+        return state.get(key)
+    return getattr(state, attr or key, None)
+
+
+def _build_context(state: Union[AgentState, dict]) -> str:
+    """Build context string regardless of state type."""
+    if isinstance(state, AgentState):
+        return state.all_retrieved_context
+
+    chunks = state.get("accepted_chunks") or []
+    return "\n\n---\n\n".join(
+        f"[Source: {c.get('source', 'unknown')} | Section: {c.get('section', 'unknown')}]\n{c.get('text', '')}"
+        for c in chunks
+    )
 
 
 class SynthesizerAgent:
     def __init__(self, llm_client):
         self.llm = llm_client
 
-    async def synthesize(self, state: AgentState) -> str:
-        if not state.accepted_chunks:
+    async def synthesize(self, state: Union[AgentState, dict]) -> str:
+        accepted_chunks = (
+            state.accepted_chunks
+            if isinstance(state, AgentState)
+            else state.get("accepted_chunks")
+        )
+
+        if not accepted_chunks:
             return (
                 "I could not find sufficient information in the documents "
                 "to answer your question."
             )
 
+        original_question = (
+            state.original_question
+            if isinstance(state, AgentState)
+            else state.get("effective_query") or state.get("original_message", "")
+        )
+
+        context = _build_context(state)
+
         prompt = f"""
         Answer the following question using only the provided context.
         Cite sources by referencing the section name in brackets.
 
-        Question: {state.original_question}
+        Question: {original_question}
 
         Context:
-        {state.all_retrieved_context}
+        {context}
 
         Rules:
         - Only use information from the provided context

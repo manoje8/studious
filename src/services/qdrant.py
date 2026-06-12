@@ -128,7 +128,7 @@ class QdrantStorageService:
         return [
             {
                 "text": r.payload.get("text", ""),
-                "score": r.score,
+                "score": float(r.score) if r.score is not None else None,
                 "section": r.payload.get("section_title", ""),
                 "source": r.payload.get("source_file", ""),
                 "doc_id": r.payload.get("doc_id", ""),

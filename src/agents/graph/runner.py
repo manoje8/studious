@@ -1,9 +1,15 @@
+import uuid
+
+
 class GraphPipeline:
     def __init__(self, graph, short_term_memory):
         self.graph = graph
         self.short_term = short_term_memory
 
     async def chat(self, user_message: str, session_id: str, user_id: str) -> dict:
+        if not session_id:
+            session_id = f"{user_id}_{uuid.uuid4()}"
+
         config = {"configurable": {"thread_id": session_id}}
 
         initial_state = {

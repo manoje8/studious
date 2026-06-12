@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import logfire
 import uvicorn
 from fastapi import FastAPI
+from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from src.agents.agentic.grader import GraderAgent
@@ -21,9 +22,9 @@ from src.api.routers.document_routes import create_document_routes
 from src.api.routers.query_router import create_query_routes
 from src.ingestion.embedding import EmbeddingService
 from src.ingestion.processor import Processor
-from src.llm.gemini import GeminiClient
 
-# from src.llm.groq import GroqClient
+# from src.llm.gemini import GeminiClient
+from src.llm.groq import GroqClient
 from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
@@ -38,18 +39,30 @@ async def lifespan(app: FastAPI):
     global pipeline
 
     pool = AsyncConnectionPool(
-        conninfo=config.POSTGRES_CONN_STRING, min_size=2, max_size=10, open=False
+        conninfo=config.POSTGRES_CONN_STRING,
+        min_size=2,
+        max_size=10,
+        open=False,
+        kwargs={"autocommit": True, "row_factory": dict_row},
     )
 
     await pool.open()
     await pool.wait()
 
-    llm_client = GeminiClient()
-    # llm_client = GroqClient()
+    # llm_client = GeminiClient()
+    llm_client = GroqClient()
     short_term = ShortTermMemoryManager(config.REDIS_URL)
 
-    embedding_service = EmbeddingService(model_name=config.EMBEDDING_MODEL_NAME)
-    storage_service = QdrantStorageService(url=config.QDRANT_CLUSTER_ENDPOINT)
+    embedding_service = EmbeddingService(
+        model_name=config.EMBEDDING_MODEL_NAME,
+        dimensions=config.EMBEDDING_DIMENSIONS,
+        batch_size=config.EMBEDDING_BATCH_SIZE,
+    )
+    storage_service = QdrantStorageService(
+        url=config.QDRANT_CLUSTER_ENDPOINT,
+        vector_size=embedding_service.vector_size,
+        collection_name=config.QDRANT_COLLECTION_NAME,
+    )
     sparse_index = SparseSearchIndex()
 
     logfire.info("Rebuilding sparse index...")
@@ -83,6 +96,7 @@ async def lifespan(app: FastAPI):
     pipeline = GraphPipeline(graph, short_term_memory=short_term)
     app.state.pipeline = pipeline
     app.state.pool = pool
+
     yield
     app.state.pipeline = None
     await pool.close()

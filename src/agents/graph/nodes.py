@@ -1,4 +1,3 @@
-from src.agents.agent_model import AgentState
 from src.agents.graph.state import State
 
 
@@ -42,7 +41,7 @@ async def retrieve(state: State, retrieval_agent) -> dict:
     round_result = await retrieval_agent.retrieve_and_evaluate(
         query=state["current_query"],
         original_question=sub_q,
-        state=AgentState,
+        state=state,
     )
 
     return {
@@ -72,13 +71,19 @@ async def refine_query(state: State, retrieval_agent) -> dict:
 # Sub question
 async def next_sub_question(state: State) -> dict:
     last = state["retrieval_history"][-1]
+    next_idx = state["current_sub_question_idx"] + 1
+    sub_questions = state["sub_questions"]
 
-    return {
-        "accepted_chunks": state["accepted_chunks"] + last["chunks"],
-        "current_sub_question_idx": state["current_sub_question_idx"] + 1,
+    update: dict = {
+        "accepted_chunks": (state["accepted_chunks"] or []) + (last["chunks"] or []),
+        "current_sub_question_idx": next_idx,
         "retrieval_round": 0,
-        "current_query": state["sub_questions"][state["current_sub_question_idx"] + 1],
     }
+
+    if next_idx < len(sub_questions):
+        update["current_query"] = sub_questions[next_idx]
+
+    return update
 
 
 # Grader
@@ -92,7 +97,9 @@ async def grade(state: State, grader) -> dict:
 
 # Synthesizer
 async def synthesize(state: State, synthesizer) -> dict:
-    answer = await synthesizer.synthesize_from_state(state)
-    sources = list({c["source"] for c in state["accepted_chunks"]})
+    answer = await synthesizer.synthesize(state)
+
+    accepted_chunks = state.get("accepted_chunks") or []
+    sources = list({c["source"] for c in accepted_chunks if c.get("source")})
 
     return {"final_answer": answer, "sources": sources}

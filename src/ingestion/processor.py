@@ -138,7 +138,7 @@ class Processor:
             f"Chunking complete: {len(chunks)} chunks produced from {len(content_list)} blocks"
         )
 
-        enriched = chunks.build_parent_child_chunk(chunks)
+        enriched = chunking.build_parent_child_chunk(chunks)
         logfire.info(f"Build parent child chunk: {len(enriched)}")
 
         return enriched

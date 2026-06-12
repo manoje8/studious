@@ -1,4 +1,5 @@
-from src.agents.agent_model import AgentState, RetrievalRound, RetrievalDecision
+from src.agents.agent_model import RetrievalRound, RetrievalDecision
+from src.agents.graph.state import State
 from src.agents.hybrid_search import HybridSearch
 from src.agents.query_expander import QueryExpander
 from src.services.reranker import Reranker
@@ -64,9 +65,9 @@ class RetrievalAgent:
         return rerank
 
     async def retrieve_and_evaluate(
-        self, query: str, original_question: str, state: AgentState
+        self, query: str, original_question: str, state: State
     ) -> RetrievalRound:
-        results = await self.retrieve(query, original_question, state.doc_id_filter)
+        results = await self.retrieve(query, original_question, state["doc_id_filter"])
 
         if not results:
             return RetrievalRound(

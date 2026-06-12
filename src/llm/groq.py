@@ -5,9 +5,13 @@ from src.utils.config import config
 
 
 class GroqClient(BaseLLM):
-    def __init__(self, model: str = "llama-3.3-70b-versatile"):
+    def __init__(self, model: str = "llama-3.3-70b-versatile", max_tokens: int = 1024):
         self.client = ChatGroq(
-            model=model, api_key=config.GROQ_API_KEY, temperature=0.1
+            model=model,
+            api_key=config.GROQ_API_KEY,
+            temperature=0.1,
+            max_tokens=max_tokens,
+            max_retries=2,
         )
 
     async def complete(self, prompt: str, max_token: int = 1024) -> LLMResponse:

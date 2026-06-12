@@ -1,7 +1,3 @@
-import asyncio
-
-import logfire
-
 from src.agents.agentic.agentic import AgenticRAG
 from src.agents.hybrid_search import HybridSearch
 from src.agents.memory.episodic import EpisodicMemoryManager
@@ -10,7 +6,6 @@ from src.agents.multi_turn_agentic import MultiTurnAgenticRAGPipeline
 from src.agents.query_expander import QueryExpander
 from src.agents.retrieval import RetrievalAgent
 from src.ingestion.embedding import EmbeddingService
-from src.llm.gemini import GeminiClient
 from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
@@ -63,22 +58,3 @@ class Pipeline:
         return await self.pipeline.chat(
             user_message=message, session_id=session_id, user_id=user_id
         )
-
-
-async def main():
-    # groq_client = GroqClient(model="llama-3.3-70b-versatile")
-    google_client = GeminiClient()
-    pipeline = Pipeline(
-        llm_client=google_client, qdrant_url=config.QDRANT_CLUSTER_ENDPOINT
-    )
-    result = await pipeline.chat(
-        "Explain Structural design pattern",
-        "f4725d32-4cc9-4497-99ce-2aeb992855e5",
-        "455",
-    )
-    print(result.get("answer"))
-
-
-if __name__ == "__main__":
-    logfire.configure(service_name="Studious")
-    asyncio.run(main())

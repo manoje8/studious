@@ -12,8 +12,9 @@ def create_query_routes(api_key: Optional[str] = None, top_k: int = 60):
     @router.post("/query")
     async def create_query(
         question: str,
-        session_id: str,
         user_id: str,
+        session_id: str | None = None,
+        is_multi_retriever: bool = False,
         pipeline: GraphPipeline = Depends(get_pipeline),
     ):
         return await pipeline.chat(

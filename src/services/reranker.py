@@ -39,7 +39,8 @@ class Reranker:
                 original = text_to_chunk.get(text)
                 if original:
                     chunk = dict(original)
-                    chunk["score"] = result.get("score", original.get("score", 0.0))
+                    score = result.get("score", original.get("score", 0.0))
+                    chunk["score"] = float(score) if score is not None else None
                     merged.append(chunk)
 
             return merged

@@ -18,7 +18,14 @@ from src.agents.graph.state import State
 
 
 def build_rag_graph(
-    short_term, rewriter, router, planner, retrieval_agent, grader, synthesizer
+    short_term,
+    rewriter,
+    router,
+    planner,
+    retrieval_agent,
+    grader,
+    synthesizer,
+    is_multi_retriever: bool = False,
 ):
     builder = StateGraph(State)
 
@@ -40,23 +47,29 @@ def build_rag_graph(
     builder.add_edge("rewrite_query", "route")
     builder.add_edge("route", "plan")
     builder.add_edge("plan", "retrieve")
-    builder.add_conditional_edges(
-        "retrieve",
-        route_after_retrieve,
-        {
-            "refine_query": "refine_query",
-            "next_sub_question": "next_sub_question",
-            "grade": "grade",
-        },
-    )
-    builder.add_edge("refine_query", "retrieve")
-    builder.add_conditional_edges(
-        "next_sub_question",
-        route_after_next_sub_question,
-        {
-            "retrieve": "retrieve",
-        },
-    )
+
+    if is_multi_retriever:
+        builder.add_conditional_edges(
+            "retrieve",
+            route_after_retrieve,
+            {
+                "refine_query": "refine_query",
+                "next_sub_question": "next_sub_question",
+                "grade": "grade",
+            },
+        )
+        builder.add_edge("refine_query", "retrieve")
+        builder.add_conditional_edges(
+            "next_sub_question",
+            route_after_next_sub_question,
+            {
+                "retrieve": "retrieve",
+            },
+        )
+    else:
+        builder.add_edge("retrieve", "next_sub_question")
+        builder.add_edge("next_sub_question", "grade")
+
     builder.add_edge("grade", "synthesize")
     builder.add_edge("synthesize", END)
 
