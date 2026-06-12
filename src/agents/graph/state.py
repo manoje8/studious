@@ -23,3 +23,5 @@ class State(TypedDict):
     final_answer: str
     sources: list[str]
     doc_id_filter: str | None
+
+    resolved_references: list

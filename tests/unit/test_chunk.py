@@ -374,9 +374,9 @@ class TestChunkFixed:
             content, self.DOC_ID, self.SOURCE, chunk_size=chunk_size, overlap=10
         )
         for c in chunks:
-            word_count = len(c.text.split())
+            token_count = chunker.tokenizer.count(c.text)
             # Allow a small margin for overlap tokens that were prepended
-            assert word_count <= chunk_size + 10 + 5
+            assert token_count <= chunk_size + 10 + 5
 
     def test_chunk_index_increments_correctly(self, chunker):
         content = self._make_content(1200)

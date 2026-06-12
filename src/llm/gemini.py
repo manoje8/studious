@@ -11,7 +11,12 @@ class GeminiClient(BaseLLM):
 
     async def complete(self, prompt: str, max_token: int = 1024) -> LLMResponse:
         response = self.client.models.generate_content(
-            model=self.model, contents=prompt
+            model=self.model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=0.1,
+                max_output_tokens=max_token,
+            ),
         )
 
         raw = response.text

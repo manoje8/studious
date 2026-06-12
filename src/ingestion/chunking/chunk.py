@@ -1,6 +1,10 @@
 import re
 from dataclasses import dataclass, field
+from typing import List
+
 import logfire
+
+from src.utils.tokenizer import Tokenizer, TikTokenTokenizer
 
 
 @dataclass
@@ -39,6 +43,7 @@ class Chunk:
     block_types: list[str] = field(default_factory=list)
     token_count: int = 0
     parent_text: str = ""
+    parent_token_count: int = 0
     parent_window_start: int = 0
     parent_window_end: int = 0
 
@@ -56,7 +61,8 @@ class Chunk:
 
 
 class Chunking:
-    # TODO: Need to add more chunking process
+    def __init__(self, tokenizer: Tokenizer = None):
+        self.tokenizer = tokenizer or TikTokenTokenizer(model_name="gpt-4o-mini")
 
     @staticmethod
     def _clean_text(text: str) -> str:
@@ -70,6 +76,30 @@ class Chunking:
         cleaned = re.sub(r" {2,}", " ", cleaned)
         return cleaned.strip()
 
+    def _make_chunk(
+        self,
+        text: str,
+        chunk_index: int,
+        doc_id: str,
+        source_file: str,
+        chunk_type: str,
+        section_title: str = "",
+        block_types: list[str] = None,
+        page_numbers: list[int] = None,
+    ) -> Chunk:
+        """Helper that constructs a Chunk and populates token_count immediately."""
+        return Chunk(
+            text=text,
+            chunk_index=chunk_index,
+            doc_id=doc_id,
+            source_file=source_file,
+            chunk_type=chunk_type,
+            section_title=section_title,
+            block_types=block_types or [],
+            page_numbers=page_numbers or [],
+            token_count=self.tokenizer.count(text),
+        )
+
     def chunk_by_structure(
         self,
         content_list: list[dict],
@@ -77,10 +107,47 @@ class Chunking:
         source_file: str,
         max_token: int = 512,
     ) -> list[Chunk]:
+        """
+        Split content into chunks based on document structure (headings and tables).
+
+        When accumulated blocks exceed max_token, a new chunk is started
+        even if no structural boundary has been reached.
+
+        Parameters
+        ----------
+        content_list:
+            List of block dicts with ``"type"`` and ``"text"`` keys.
+        doc_id:
+            Unique identifier of the source document.
+        source_file:
+            Path to the originating file.
+        max_token:
+            Maximum number of tokens per chunk.
+        """
         chunks = []
         current_blocks = []
+        current_tokens: List[int] = []
         current_title = "Introduction"
         chunk_index = 0
+
+        def flush_current_blocks():
+            nonlocal chunk_index, current_blocks, current_tokens
+            if current_blocks:
+                chunk_text = " ".join(b.get("text", "") for b in current_blocks)
+                chunks.append(
+                    self._make_chunk(
+                        text=chunk_text,
+                        chunk_index=chunk_index,
+                        doc_id=doc_id,
+                        source_file=source_file,
+                        chunk_type="structure",
+                        section_title=current_title,
+                        block_types=[b.get("type") for b in current_blocks],
+                    )
+                )
+                chunk_index += 1
+                current_blocks = []
+                current_tokens = []
 
         for block in content_list:
             if isinstance(block, dict):
@@ -95,43 +162,13 @@ class Chunking:
                 continue
 
             if block_type == "heading":
-                if current_blocks:
-                    chunk_text = " ".join(b.get("text", "") for b in current_blocks)
-                    chunks.append(
-                        Chunk(
-                            text=chunk_text,
-                            chunk_index=chunk_index,
-                            doc_id=doc_id,
-                            source_file=source_file,
-                            chunk_type="structure",
-                            section_title=current_title,
-                            block_types=[b.get("type") for b in current_blocks],
-                        )
-                    )
-                    chunk_index += 1
-                    current_blocks = []
-
+                flush_current_blocks()
                 current_title = text
 
             elif block_type == "table":
-                if current_blocks:
-                    chunk_text = " ".join(b.get("text", "") for b in current_blocks)
-                    chunks.append(
-                        Chunk(
-                            text=chunk_text,
-                            chunk_index=chunk_index,
-                            doc_id=doc_id,
-                            source_file=source_file,
-                            chunk_type="structure",
-                            section_title=current_title,
-                            block_types=[b.get("type") for b in current_blocks],
-                        )
-                    )
-                    chunk_index += 1
-                    current_blocks = []
-
+                flush_current_blocks()
                 chunks.append(
-                    Chunk(
+                    self._make_chunk(
                         text=text,
                         chunk_index=chunk_index,
                         doc_id=doc_id,
@@ -144,23 +181,17 @@ class Chunking:
                 chunk_index += 1
 
             else:
+                prospective_text = (
+                    " ".join(b.get("text", "") for b in current_blocks) + " " + text
+                )
+                if (
+                    current_blocks
+                    and self.tokenizer.count(prospective_text) > max_token
+                ):
+                    flush_current_blocks()
                 current_blocks.append(block)
 
-        # Flush whatever remains
-        if current_blocks:
-            chunk_text = " ".join(b.get("text", "") for b in current_blocks)
-            chunks.append(
-                Chunk(
-                    text=chunk_text,
-                    chunk_index=chunk_index,
-                    doc_id=doc_id,
-                    source_file=source_file,
-                    chunk_type="structure",
-                    section_title=current_title,
-                    block_types=[b.get("type") for b in current_blocks],
-                )
-            )
-
+        flush_current_blocks()
         return chunks
 
     def chunk_fixed(
@@ -173,6 +204,30 @@ class Chunking:
         overlap: int = 50,
         split_by_character: str = "\n\n",
     ) -> list[Chunk]:
+        """
+        Split content into fixed-size token chunks with optional overlap.
+
+        Parameters
+        ----------
+        content_list:
+            List of block dicts with a ``"text"`` key, or plain strings.
+        doc_id:
+            Unique identifier of the source document.
+        source_file:
+            Path to the originating file.
+        chunk_size:
+            Target number of tokens per chunk.
+        max_token:
+            Hard ceiling on tokens per chunk (must be >= chunk_size).
+        overlap:
+            Number of tokens carried over from the previous chunk.
+        split_by_character:
+            Delimiter used to join and then split the source text into segments.
+        """
+
+        if max_token < chunk_size:
+            raise ValueError("max_token must be greater than or equal to chunk_size")
+
         texts = []
         for block in content_list:
             if isinstance(block, dict):
@@ -188,15 +243,16 @@ class Chunking:
         segments = full_text.split(split_by_character)
 
         chunks = []
-        current_tokens = []
-        chunk_index = 0
+        current_tokens: List[int] = []
+        chunk_index: int = 0
 
         def flush():
             nonlocal chunk_index, current_tokens
             if current_tokens:
+                chunk_text = self.tokenizer.decode(current_tokens)
                 chunks.append(
-                    Chunk(
-                        text=" ".join(current_tokens),
+                    self._make_chunk(
+                        text=chunk_text,
                         chunk_index=chunk_index,
                         doc_id=doc_id,
                         source_file=source_file,
@@ -207,18 +263,18 @@ class Chunking:
                 current_tokens = current_tokens[-overlap:] if overlap > 0 else []
 
         for segment in segments:
-            words = segment.split()
+            segment_token = self.tokenizer.encode(segment)
 
-            while len(words) > chunk_size:
+            while len(segment_token) > chunk_size:
                 available = chunk_size - len(current_tokens)
-                current_tokens.extend(words[:available])
-                words = words[available:]
+                current_tokens.extend(segment_token[:available])
+                segment_token = segment_token[available:]
                 flush()
 
-            if len(current_tokens) + len(words) > chunk_size:
+            if len(current_tokens) + len(segment_token) > chunk_size:
                 flush()
 
-            current_tokens.extend(words)
+            current_tokens.extend(segment_token)
 
         flush()
         return chunks
@@ -231,6 +287,23 @@ class Chunking:
         chunk_size: int = 1500,
         split_by_character: str = "\n\n",
     ):
+        """
+        Simple paragraph-aware splitter for plain string input.
+
+        Parameters
+        ----------
+        content_list:
+            Raw string to be split (not a list of dicts).
+        doc_id:
+            Unique identifier of the source document.
+        source_file:
+            Path to the originating file.
+        chunk_size:
+            Maximum character length per chunk.
+        split_by_character:
+            Delimiter used to identify paragraph boundaries.
+        """
+
         paragraphs = content_list.split(split_by_character)
         chunks = []
         current_chunk = ""
@@ -272,12 +345,19 @@ class Chunking:
         self, chunks: list[Chunk], parent_window: int = 3
     ) -> list[Chunk]:
         """
-        Each chunk gets a parent_id pointing to a broader context window.
-        Retrieve by child, re-rank or expand using parent at query time.
+        Enrich each child chunk with a broader parent context window.
 
-        :param chunks:
-        :param parent_window:
-        :return:
+        Each chunk gains a ``parent_text`` field containing the concatenated
+        text of itself and its neighboring chunks. The ``parent_token_count``
+        field is also populated for budget-aware retrieval.
+
+        Parameters
+        ----------
+        chunks:
+            List of Chunk objects to enrich.
+        parent_window:
+            Total number of chunks to include in the parent window
+            (centered on the current chunk).
         """
 
         enriched = []
@@ -286,6 +366,7 @@ class Chunking:
             end = min(len(chunks), i + parent_window // 2 + 1)
 
             parent_text = " ".join(c.text for c in chunks[start:end])
+            parent_token_count = self.tokenizer.count(parent_text)
 
             enriched.append(
                 Chunk(
@@ -299,6 +380,7 @@ class Chunking:
                     block_types=chunk.block_types,
                     token_count=chunk.token_count,
                     parent_text=parent_text,
+                    parent_token_count=parent_token_count,
                     parent_window_start=start,
                     parent_window_end=end,
                 )
