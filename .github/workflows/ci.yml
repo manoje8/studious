@@ -81,7 +81,8 @@ jobs:
             rank-bm25 \
             numpy \
             ascii_colors \
-            tiktoken
+            tiktoken \
+            google-cloud-storage
 
       - name: Install project in editable mode
         run: pip install -e .
