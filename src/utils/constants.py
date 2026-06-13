@@ -1,3 +1,5 @@
+from enum import Enum
+
 SUPPORTED_PARSERS = "DocumentAI"
 HTML_FORMATS = {".html", ".htm", ".xhtml"}
 OFFICE_FORMATS = {".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx"}
@@ -40,3 +42,14 @@ GOOGLE_DOC_AI = "google_doc_ai"
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 50
 MIN_CHUNK_SIZE = 50
+
+
+class StorageType(Enum):
+    LOCAL = "local"
+    GCS = "gcs"
+
+
+class ChunkingType(Enum):
+    STRUCTURE = "structure"
+    FIXED = "fixed"
+    SPLITTER = "splitter"

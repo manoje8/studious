@@ -1,6 +1,8 @@
+import io
 import shutil
+from dataclasses import asdict
+from io import BytesIO
 from pathlib import Path
-from typing import BinaryIO
 
 from src.storage.base_storage import BaseStorage
 
@@ -18,21 +20,31 @@ class LocalStorage(BaseStorage):
 
         return resolved
 
-    def upload(self, key: str, data: BinaryIO, metadata: dict = None) -> str:
+    def upload(self, key: str, data, metadata: dict = None) -> str:
+        import json
+
         target = self._resolve(key)
         target.parent.mkdir(parents=True, exist_ok=True)
-        with open(target, "wb") as f:
-            shutil.copyfileobj(data, f)
 
-        if metadata:
-            import json
+        if isinstance(data, io.IOBase):
+            with open(target, "wb") as f:
+                shutil.copyfileobj(data, f)
+        elif isinstance(data, list):
+            payload = json.dumps([asdict(c) for c in data]).encode("utf-8")
+            with open(target, "wb") as f:
+                shutil.copyfileobj(BytesIO(payload), f)
+        else:
+            raise ValueError(
+                f"Unsupported data type: {type(data)}. " "Expected BinaryIO or list."
+            )
 
+        if metadata is not None:
             meta_path = target.with_suffix(target.suffix + ".meta")
             meta_path.write_text(json.dumps(metadata))
 
         return str(target)
 
-    def download(self, key: str) -> BinaryIO:
+    def download(self, key: str):
         target = self._resolve(key)
         if not target.exists():
             raise FileNotFoundError(f"Key '{key}' not found")

@@ -17,6 +17,7 @@ class Config:
     GCP_DOC_AI_PROCESSOR_ID: str = os.getenv("GCP_DOC_AI_PROCESSOR_ID")
     GCP_RAW_BUCKET: str = os.getenv("GCP_RAW_BUCKET")
     GCP_PROCESSED_BUCKET: str = os.getenv("GCP_PROCESSED_BUCKET")
+    GCP_BUCKET_PREFIX: str = os.getenv("GCP_BUCKET_PREFIX", "")
     VPC_CONNECTOR: str = os.getenv("VPC_CONNECTOR")
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
@@ -54,6 +55,9 @@ class Config:
 
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     POSTGRES_CONN_STRING = os.getenv("POSTGRES_CONN_STRING")
+
+    STORAGE_TYPE: str = "local"
+    STORAGE_BASE_DIR: str = "./data"
 
 
 config = Config()

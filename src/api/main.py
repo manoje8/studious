@@ -21,7 +21,6 @@ from src.agents.retrieval import RetrievalAgent
 from src.api.routers.document_routes import create_document_routes
 from src.api.routers.query_router import create_query_routes
 from src.ingestion.embedding import EmbeddingService
-from src.ingestion.processor import Processor
 
 # from src.llm.gemini import GeminiClient
 from src.llm.groq import GroqClient
@@ -105,14 +104,11 @@ async def lifespan(app: FastAPI):
 def create_apps():
     app = FastAPI(title=config.PROJECT_NAME, lifespan=lifespan)
 
-    processor = Processor()
-    processor.config = {"parser": "google-vertexAI"}
-
     @app.get("/")
     def root():
         return "running"
 
-    app.include_router(create_document_routes(processor))
+    app.include_router(create_document_routes())
     app.include_router(create_query_routes())
 
     return app

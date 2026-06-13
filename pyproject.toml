@@ -16,4 +16,4 @@ ignore_no_config = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "utils*"]
+include = ["src*"]

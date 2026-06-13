@@ -12,11 +12,14 @@ from src.ingestion.chunking.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
 from src.services.sparse_index import SparseSearchIndex
+from src.storage.storage_factory import StorageFactory
 from src.utils.constants import (
     GOOGLE_DOC_AI,
     HTML_FORMATS,
     OFFICE_FORMATS,
     TEXT_FORMATS,
+    StorageType,
+    ChunkingType,
 )
 from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
@@ -45,6 +48,18 @@ class Processor:
         )
 
         self.sparse_index = SparseSearchIndex()
+
+        local_config = {
+            "type": StorageType.LOCAL.value,
+            "base_dir": config.STORAGE_BASE_DIR,
+        }
+
+        # cloud_config = {
+        #     "type": StorageType.GCS.value,
+        #     "bucket": config.GCP_PROCESSED_BUCKET,
+        # }
+
+        self.in_storage = StorageFactory.create(local_config)
 
     def _get_parser(self, parser_type: str):
         parser_name = parser_type.strip().lower()
@@ -104,7 +119,7 @@ class Processor:
         file_path: Path,
         content_list: list[dict],
         doc_id: str,
-        chunking_strategy: str,
+        chunking_strategy: ChunkingType,
         split_by_character: str | None = None,
     ):
         logfire.info(f"Starting chunking with strategy: {chunking_strategy}")
@@ -114,13 +129,13 @@ class Processor:
         if not chunking_strategy:
             chunking_strategy = self._select_chunking_strategy(file_path)
 
-        if chunking_strategy == "structure":
+        if chunking_strategy == ChunkingType.STRUCTURE.value:
             chunks = chunking.chunk_by_structure(
                 content_list=content_list,
                 doc_id=doc_id or file_path.stem,
                 source_file=str(file_path),
             )
-        elif chunking_strategy == "fixed":
+        elif chunking_strategy == ChunkingType.FIXED.value:
             chunks = chunking.chunk_fixed(
                 content_list=content_list,
                 doc_id=doc_id or file_path.stem,
@@ -147,16 +162,15 @@ class Processor:
         suffix = file_path.suffix.lower()
 
         if suffix in HTML_FORMATS | TEXT_FORMATS:
-            return "structure"
+            return ChunkingType.STRUCTURE.value
         elif suffix in OFFICE_FORMATS or suffix == ".pdf":
-            return "recursive"
+            return ChunkingType.FIXED.value
         else:
-            return "splitter"
+            return ChunkingType.SPLITTER.value
 
     async def process_document_complete(
         self,
         file_path: str | Path,
-        output_dir: str = None,
         parse_method: str = None,
         parser: str | None = None,
         display_stats: bool = None,
@@ -257,8 +271,8 @@ class Processor:
         self,
         file_path: str,
         parse_method: str,
+        chunking_strategy: ChunkingType,
         doc_id: str | None = None,
-        chunking_strategy: str | None = None,
         split_by_character: str = "\n\n",
         parser: str | None = "auto",
     ):
@@ -281,8 +295,11 @@ class Processor:
             doc_id=doc_id,
             chunking_strategy=chunking_strategy,
         )
+        self.in_storage.upload(key="chunks", data=chunks)
+        logfire.info(f"Document chunking completed: {len(chunks)}")
 
         embedded_chunks = await self.embedding_service.embed_chunks(chunks)
+        self.in_storage.upload(key="embedded_chunks", data=embedded_chunks)
         logfire.info(f"Stage 3 complete: {len(embedded_chunks)} vectors")
 
         # Rebuild sparse index to stay in sync

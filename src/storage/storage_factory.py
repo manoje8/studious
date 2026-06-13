@@ -1,4 +1,5 @@
 from src.storage.base_storage import BaseStorage
+from src.utils.constants import StorageType
 
 
 class StorageFactory:
@@ -12,11 +13,11 @@ class StorageFactory:
     def create(config: dict) -> BaseStorage:
         storage_type = config.get("type", "local").lower()
 
-        if storage_type == "local":
+        if storage_type == StorageType.LOCAL.value:
             from src.storage.local_storage import LocalStorage
 
             return LocalStorage(base_path=config["base_dir"])
-        elif storage_type == "gcs":
+        elif storage_type == StorageType.GCS.value:
             from src.storage.gcp_storage import GoogleCloudStorage
 
             return GoogleCloudStorage(
