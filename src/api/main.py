@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import logfire
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -103,6 +104,21 @@ async def lifespan(app: FastAPI):
 
 def create_apps():
     app = FastAPI(title=config.PROJECT_NAME, lifespan=lifespan)
+
+    def get_cors_origins():
+        origins_str = config.CORS_ORIGINS
+        if origins_str == "*":
+            return ["*"]
+        return [origin.strip() for origin in origins_str.split(",")]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["X-New_Token"],
+    )
 
     @app.get("/")
     def root():

@@ -10,6 +10,7 @@ class Config:
     PROJECT_NAME: str = os.getenv("PROJECT_NAME", "studious")
     PORT: int = int(os.getenv("PORT", 8000))
     HOST: str = os.getenv("HOST", "localhost")
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS")
 
     PROJECT_ID: str = os.getenv("PROJECT_ID")
     LOCATION: str = os.getenv("LOCATION")
