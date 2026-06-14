@@ -3,7 +3,11 @@ from functools import partial
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import StateGraph, END
 
-from src.agents.graph.edges import route_after_retrieve, route_after_next_sub_question
+from src.agents.graph.edges import (
+    route_after_retrieve,
+    route_after_next_sub_question,
+    route_after_classify,
+)
 from src.agents.graph.nodes import (
     rewrite_query,
     route,
@@ -43,9 +47,17 @@ def build_rag_graph(
     builder.add_node("grade", partial(grade, grader=grader))
     builder.add_node("synthesize", partial(synthesize, synthesizer=synthesizer))
 
+    # Edges
     builder.set_entry_point("rewrite_query")
     builder.add_edge("rewrite_query", "route")
-    builder.add_edge("route", "plan")
+    builder.add_conditional_edges(
+        "route",
+        route_after_classify,
+        {
+            "synthesize": "synthesize",
+            "plan": "plan",
+        },
+    )
     builder.add_edge("plan", "retrieve")
 
     if is_multi_retriever:

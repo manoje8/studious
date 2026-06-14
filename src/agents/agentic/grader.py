@@ -31,10 +31,7 @@ class GraderAgent:
                 chunk["grade_reason"] = grade["reason"]
                 accepted.append(chunk)
             else:
-                logfire.info(
-                    f"Grader rejected chunk from '{chunk['section']}': "
-                    f"{grade['reason']}"
-                )
+                logfire.info(f"Grader rejected chunk: " f"{grade['reason']}")
 
         logfire.info(f"Grader accepted {len(accepted)}/{len(chunks)} chunks")
 

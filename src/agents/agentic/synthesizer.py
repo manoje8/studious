@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Union
 
 from src.agents.agent_model import AgentState
+from src.agents.graph.state import State
 
 
 def _get(state: Union[AgentState, dict], key: str, attr: str | None = None):
@@ -28,14 +29,17 @@ class SynthesizerAgent:
     def __init__(self, llm_client):
         self.llm = llm_client
 
-    async def synthesize(self, state: Union[AgentState, dict]) -> str:
+    async def synthesize(self, state: Union[State, dict]) -> str:
+        question_category = state["question_category"] or ""
+        retrieval_history = state["retrieval_history"] or []
+
         accepted_chunks = (
             state.accepted_chunks
             if isinstance(state, AgentState)
             else state.get("accepted_chunks")
         )
 
-        if not accepted_chunks:
+        if not accepted_chunks and question_category != "chitchat":
             return (
                 "I could not find sufficient information in the documents "
                 "to answer your question."
@@ -48,6 +52,17 @@ class SynthesizerAgent:
         )
 
         context = _build_context(state)
+
+        friendly_prompt = f"""
+        You are a friendly and helpful Enterprise AI Assistant.
+        Answer the user's latest message using the CONVERSATION HISTORY below.
+
+        CONVERSATION HISTORY:
+        {retrieval_history}
+
+        LATEST MESSAGE:
+        "{original_question}"
+        """
 
         prompt = f"""
         Answer the following question using only the provided context.
@@ -65,5 +80,7 @@ class SynthesizerAgent:
         - Be precise and direct
         """
 
-        response = await self.llm.complete(prompt)
+        response = await self.llm.complete(
+            prompt if question_category != "chitchat" else friendly_prompt
+        )
         return response.text

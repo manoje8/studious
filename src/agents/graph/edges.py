@@ -2,6 +2,8 @@ from src.agents.graph.state import State
 
 
 def route_after_classify(state: State) -> str:
+    if state["question_category"] == "chitchat":
+        return "synthesize"
     return "plan"
 
 

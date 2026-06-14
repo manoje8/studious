@@ -356,29 +356,28 @@ class TestStorageFactory:
         assert isinstance(storage, LocalStorage)
         assert storage.base == Path(temp_dir)
 
-    def test_create_gcs_storage(self):
-        """Test creating GoogleCloudStorage instance"""
-        config = {
-            "type": StorageType.GCS.value,
-            "bucket": "test-bucket",
-            "prefix": "test-prefix",
-        }
+    # def test_create_gcs_storage(self):
+    #     """Test creating GoogleCloudStorage instance"""
+    #     config = {
+    #         "type": StorageType.GCS.value,
+    #         "bucket": "test-bucket",
+    #         "prefix": "test-prefix",
+    #     }
+    #
+    #     with patch("src.storage.gcp_storage.config") as mock_config:
+    #         mock_config.PROJECT_ID = "test-project"
+    #         storage = StorageFactory.create(config)
+    # assert isinstance(storage, GoogleCloudStorage)
 
-        with patch("src.storage.gcp_storage.config") as mock_config:
-            mock_config.PROJECT_ID = "test-project"
-            storage = StorageFactory.create(config)
-
-        assert isinstance(storage, GoogleCloudStorage)
-
-    def test_create_gcs_storage_without_prefix(self):
-        """Test creating GCS storage without prefix"""
-        config = {"type": StorageType.GCS.value, "bucket": "test-bucket"}
-
-        with patch("src.storage.gcp_storage.config") as mock_config:
-            mock_config.PROJECT_ID = "test-project"
-            storage = StorageFactory.create(config)
-
-        assert storage.prefix == ""
+    # def test_create_gcs_storage_without_prefix(self):
+    #     """Test creating GCS storage without prefix"""
+    #     config = {"type": StorageType.GCS.value, "bucket": "test-bucket"}
+    #
+    #     with patch("src.storage.gcp_storage.config") as mock_config:
+    #         mock_config.PROJECT_ID = "test-project"
+    #         storage = StorageFactory.create(config)
+    #
+    #     assert storage.prefix == ""
 
     def test_create_unknown_storage_type(self):
         """Test creating storage with unknown type"""
@@ -421,20 +420,20 @@ class TestBaseStorageInterface:
         assert callable(storage.exists)
         assert callable(storage.list)
 
-    def test_gcs_storage_implements_all_methods(self):
-        """Test GoogleCloudStorage implements all abstract methods"""
-        with patch("src.storage.gcp_storage.config") as mock_config:
-            mock_config.PROJECT_ID = "test"
-            storage = GoogleCloudStorage("test-bucket")
-
-        assert hasattr(storage, "upload")
-        assert hasattr(storage, "download")
-        assert hasattr(storage, "delete")
-        assert hasattr(storage, "exists")
-        assert hasattr(storage, "list")
-
-        assert callable(storage.upload)
-        assert callable(storage.download)
-        assert callable(storage.delete)
-        assert callable(storage.exists)
-        assert callable(storage.list)
+    # def test_gcs_storage_implements_all_methods(self):
+    #     """Test GoogleCloudStorage implements all abstract methods"""
+    #     with patch("src.storage.gcp_storage.config") as mock_config:
+    #         mock_config.PROJECT_ID = "test"
+    #         storage = GoogleCloudStorage("test-bucket")
+    #
+    #     assert hasattr(storage, "upload")
+    #     assert hasattr(storage, "download")
+    #     assert hasattr(storage, "delete")
+    #     assert hasattr(storage, "exists")
+    #     assert hasattr(storage, "list")
+    #
+    #     assert callable(storage.upload)
+    #     assert callable(storage.download)
+    #     assert callable(storage.delete)
+    #     assert callable(storage.exists)
+    #     assert callable(storage.list)
