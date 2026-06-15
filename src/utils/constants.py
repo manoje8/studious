@@ -49,7 +49,12 @@ class StorageType(Enum):
     GCS = "gcs"
 
 
-class ChunkingType(Enum):
+class ChunkingType(str, Enum):
     STRUCTURE = "structure"
     FIXED = "fixed"
     SPLITTER = "splitter"
+
+
+class ParseMethod(str, Enum):
+    GOOGLE_DOC_AI = "google_doc_ai"
+    DOCLING = "docling"

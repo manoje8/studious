@@ -5,7 +5,7 @@ from typing import Union, Optional
 import trafilatura
 from bs4 import BeautifulSoup
 
-from src.utils.constants import SKIP_TAGS, HEADING_TAGS, BLOCK_TAGS
+from src.utils.constants import SKIP_TAGS, HEADING_TAGS, BLOCK_TAGS, ParseMethod
 
 
 class Parser:
@@ -73,7 +73,7 @@ class Parser:
         self,
         pdf_path: Union[str, Path],
         output_dir: Optional[str] = None,
-        method: str = "auto",
+        method: ParseMethod = ParseMethod.DOCLING.value,
         lang: Optional[str] = None,
         **kwargs,
     ):

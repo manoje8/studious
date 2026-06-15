@@ -14,12 +14,12 @@ from src.services.qdrant import QdrantStorageService
 from src.services.sparse_index import SparseSearchIndex
 from src.storage.storage_factory import StorageFactory
 from src.utils.constants import (
-    GOOGLE_DOC_AI,
     HTML_FORMATS,
     OFFICE_FORMATS,
     TEXT_FORMATS,
     StorageType,
     ChunkingType,
+    ParseMethod,
 )
 from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
@@ -64,14 +64,14 @@ class Processor:
     def _get_parser(self, parser_type: str):
         parser_name = parser_type.strip().lower()
 
-        if parser_name == GOOGLE_DOC_AI:
+        if parser_name == ParseMethod.GOOGLE_DOC_AI.value:
             return GoogleDocAI()
-        elif parser_name == "docling":
+        elif parser_name == ParseMethod.DOCLING.value:
             return DoclingParser()
         else:
             raise ValueError(f"Unsupported Parser type: {parser_type}")
 
-    def _generate_cache_key(self, file_path: Path, parse_method: str = None) -> str:
+    def _generate_cache_key(self, file_path: Path, parse_method: str) -> str:
         mtime = file_path.stat().st_mtime
 
         config_dict = {
@@ -86,9 +86,7 @@ class Processor:
 
         return cache_key
 
-    def _get_cached_result(
-        self, cache_key: str, file_path: Path, parse_method: str = None
-    ):
+    def _get_cached_result(self, cache_key: str, file_path: Path, parse_method: str):
         return self._cache.get(cache_key)
 
     def _store_cache_result(
@@ -122,12 +120,11 @@ class Processor:
         chunking_strategy: ChunkingType,
         split_by_character: str | None = None,
     ):
-        logfire.info(f"Starting chunking with strategy: {chunking_strategy}")
-
         chunking = Chunking()
 
         if not chunking_strategy:
             chunking_strategy = self._select_chunking_strategy(file_path)
+            logfire.info(f"Starting chunking with strategy: {chunking_strategy}")
 
         if chunking_strategy == ChunkingType.STRUCTURE.value:
             chunks = chunking.chunk_by_structure(
@@ -171,7 +168,7 @@ class Processor:
     async def process_document_complete(
         self,
         file_path: str | Path,
-        parse_method: str = None,
+        parse_method: ParseMethod,
         parser: str | None = None,
         display_stats: bool = None,
         split_by_character: str | None = None,
@@ -180,14 +177,14 @@ class Processor:
         file_name: str | None = None,
         **kwargs,
     ):
-        logfire.info(f"Starting document parsing: {parse_method} - {file_path}")
+        logfire.info(f"Starting document parsing: {parse_method.value} - {file_path}")
 
         ext = file_path.suffix.lower()
 
         # Todo check cache
-        cache_key = self._generate_cache_key(file_path, parse_method)
+        cache_key = self._generate_cache_key(file_path, parse_method.value)
 
-        cache_result = self._get_cached_result(cache_key, file_path, parse_method)
+        cache_result = self._get_cached_result(cache_key, file_path, parse_method.value)
 
         if cache_result is not None:
             logfire.info(f"Cache HIT - Returning cached result for {file_path}")
@@ -195,7 +192,7 @@ class Processor:
             return cache_result, doc_id
 
         try:
-            doc_parser = self._get_parser(parser_type=parse_method)
+            doc_parser = self._get_parser(parser_type=parse_method.value)
 
             if not doc_parser.check_installation():
                 raise ImportError("Required package is not installed")
@@ -206,7 +203,7 @@ class Processor:
                 content_list = await asyncio.to_thread(
                     doc_parser.parse_pdf,
                     file_path=file_path,
-                    method=parse_method,
+                    method=parse_method.value,
                     **kwargs,
                 )
             elif ext in HTML_FORMATS:
@@ -214,7 +211,7 @@ class Processor:
                 content_list = await asyncio.to_thread(
                     doc_parser.parse_html,
                     file_path=file_path,
-                    method=parse_method,
+                    method=parse_method.value,
                     **kwargs,
                 )
 
@@ -223,7 +220,7 @@ class Processor:
                 content_list = await asyncio.to_thread(
                     doc_parser.parse_doc,
                     file_path=file_path,
-                    method=parse_method,
+                    method=parse_method.value,
                     **kwargs,
                 )
             else:
@@ -244,7 +241,7 @@ class Processor:
             raise ValueError("Parsing failed: No content extracted")
 
         self._store_cache_result(
-            cache_key, content_list, file_path, parse_method, parser
+            cache_key, content_list, file_path, parse_method.value, parser
         )
 
         doc_id = self._generate_doc_id(file_path)
@@ -270,7 +267,7 @@ class Processor:
     async def ingest_document(
         self,
         file_path: str,
-        parse_method: str,
+        parse_method: ParseMethod,
         chunking_strategy: ChunkingType,
         doc_id: str | None = None,
         split_by_character: str = "\n\n",

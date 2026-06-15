@@ -1,11 +1,14 @@
 import os
 import time
 import uuid
+from pathlib import Path
 
 import requests
 import streamlit as st
 import logfire
 from dotenv import load_dotenv
+
+from src.utils.constants import ChunkingType, ParseMethod
 
 load_dotenv()
 
@@ -47,6 +50,59 @@ if "messages" not in st.session_state:
 with st.sidebar:
     st.success(logfire_status)
     st.info(f"Memory ID: {st.session_state.session_id[:6]}")
+
+    st.divider(width="stretch")
+    st.subheader("Document Upload")
+    uploaded_file = st.file_uploader(
+        "Upload a document",
+        type=["pdf", "txt", "md", "docx"],
+        help="Upload pdf, txt, md, or docx files",
+    )
+
+    if uploaded_file is not None:
+        parse_method = st.selectbox(
+            "Parse Method",
+            options=list(ParseMethod),
+            format_func=lambda x: x.value.replace("_", " ").title(),
+            index=0,
+        )
+
+        chunking_strategy = st.selectbox(
+            "Chunking Strategy",
+            options=list(ChunkingType),
+            format_func=lambda x: x.value.title(),
+            index=0,
+        )
+
+        if st.button("Upload Document", type="primary", use_container_width=True):
+            with st.spinner(f"Uploading {uploaded_file.name}..."):
+                try:
+                    temp_dir = Path("data")
+                    temp_dir.mkdir(exist_ok=True)
+                    temp_path = temp_dir / uploaded_file.name
+                    with open(temp_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                    parse_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+                    ingest_url = f"{parse_url}/ingestion"
+                    doc_id = str(uuid.uuid4())
+                    payload = {
+                        "file_path": str(temp_path),
+                        "parse_method": parse_method,
+                        "chunking_strategy": chunking_strategy,
+                        "doc_id": doc_id,
+                    }
+
+                    response = requests.post(url=ingest_url, json=payload, timeout=120)
+                    if response.status_code == 200:
+                        st.success(f"Successfully uploaded: {uploaded_file.name}")
+                        logfire.info(f"Document uploaded: {uploaded_file.name}")
+                    else:
+                        st.error(f"Upload failed: {response.text}")
+
+                except Exception as e:
+                    st.error(f"Error uploading file: {str(e)}")
+                    logfire.error(f"Upload error: {str(e)}")
 
     if st.button("Clear", width="stretch", type="primary"):
         logfire.warn(f"Deleting session: {st.session_state.session_id[:6]}")
@@ -119,12 +175,3 @@ if prompt := st.chat_input("Ask me anything!"):
             answer_placeholder.markdown(answer)
             st.session_state.messages.append({"role": "assistant", "content": answer})
             logfire.info("Chat completed!")
-
-
-"""
-"answer": state.final_answer,
-"sources": state.source_used,
-"retrieval_rounds": state.current_round,
-"chunks_used": len(state.accepted_chunks),
-"sub_questions": state.sub_questions,
-"""
