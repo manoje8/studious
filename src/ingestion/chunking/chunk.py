@@ -9,7 +9,8 @@ from src.utils.tokenizer import Tokenizer, TikTokenTokenizer
 
 @dataclass
 class Chunk:
-    """A single text chunk produced by the chunking pipeline.
+    """
+    A single text chunk produced by the chunking pipeline.
 
     Attributes
     ----------
@@ -151,7 +152,7 @@ class Chunking:
 
         for block in content_list:
             if isinstance(block, dict):
-                block_type = block.get("type", "paragraph")
+                block_type = block.get("type", "text")
                 text = self._clean_text(block.get("text", "").strip())
             else:
                 block_type = "paragraph"

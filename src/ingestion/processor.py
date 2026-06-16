@@ -71,6 +71,21 @@ class Processor:
         else:
             raise ValueError(f"Unsupported Parser type: {parser_type}")
 
+    def _select_chunking_strategy(
+        self, file_path: Path, parse_method: ParseMethod
+    ) -> str:
+        suffix = file_path.suffix.lower()
+
+        if parse_method == ParseMethod.GOOGLE_DOC_AI:
+            return ChunkingType.SPLITTER.value
+        else:
+            if suffix in HTML_FORMATS | TEXT_FORMATS:
+                return ChunkingType.STRUCTURE.value
+            elif suffix in OFFICE_FORMATS or suffix == ".pdf":
+                return ChunkingType.FIXED.value
+            else:
+                return ChunkingType.SPLITTER.value
+
     def _generate_cache_key(self, file_path: Path, parse_method: str) -> str:
         mtime = file_path.stat().st_mtime
 
@@ -154,16 +169,6 @@ class Processor:
         logfire.info(f"Build parent child chunk: {len(enriched)}")
 
         return enriched
-
-    def _select_chunking_strategy(self, file_path: Path) -> str:
-        suffix = file_path.suffix.lower()
-
-        if suffix in HTML_FORMATS | TEXT_FORMATS:
-            return ChunkingType.STRUCTURE.value
-        elif suffix in OFFICE_FORMATS or suffix == ".pdf":
-            return ChunkingType.FIXED.value
-        else:
-            return ChunkingType.SPLITTER.value
 
     async def process_document_complete(
         self,
