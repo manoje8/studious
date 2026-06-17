@@ -35,6 +35,8 @@ class GoogleDocAI(Parser):
             content = self._process_pdf(pdf_path)
             return content
 
+        except (FileNotFoundError, ValueError):
+            raise
         except Exception as e:
             logfire.error(f"Error in parsing pdf: {str(e)}")
             raise
@@ -50,7 +52,7 @@ class GoogleDocAI(Parser):
         doc_path = Path(file_path)
 
         if not doc_path.exists():
-            raise FileNotFoundError(f"HTML file doesn't exist: {doc_path}")
+            raise FileNotFoundError(f"Office document doesn't exist: {doc_path}")
 
         if doc_path.suffix.lower() not in OFFICE_FORMATS:
             raise ValueError(f"Unsupported Office format: {doc_path.suffix}")
@@ -114,12 +116,14 @@ class GoogleDocAI(Parser):
         name_without_suffix = file_path.stem
         ext = file_path.suffix
 
-        reader = PdfReader(file_path).pages
-        total_pages = len(reader)
+        reader = PdfReader(file_path)
+        pages = reader.pages
+        total_pages = len(pages)
+        max_page: int = config.MAX_PAGE_PER_PARSE
+
         logfire.debug(f"{name_without_suffix} PDF with {total_pages}'s pages")
 
         text = ""
-        max_page: int = config.MAX_PAGE_PER_PARSE
 
         if total_pages <= max_page:
             with open(file_path, "rb") as f:
@@ -154,14 +158,14 @@ class GoogleDocAI(Parser):
         if not mime_type:
             raise ValueError(f"No MIME type mapping for extension: {ext}")
 
-        client_name = self.client.processor_path(
+        processor_name = self.client.processor_path(
             config.PROJECT_ID,
             config.GCP_DOC_AI_LOCATION,
             config.GCP_DOC_AI_PROCESSOR_ID,
         )
 
         raw_doc = documentai.RawDocument(content=content, mime_type=mime_type)
-        request = documentai.ProcessRequest(name=client_name, raw_document=raw_doc)
+        request = documentai.ProcessRequest(name=processor_name, raw_document=raw_doc)
 
         result = self.client.process_document(request=request)
         return result.document.text

@@ -55,3 +55,4 @@ black
 pre-commit
 
 ascii_colors
+pyyaml

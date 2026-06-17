@@ -23,7 +23,7 @@ from src.utils.constants import (
 )
 from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
-from src.utils.helper import bootstrap_sparse_index
+from src.utils.helper import bootstrap_sparse_index, separate_content
 
 
 class Processor:
@@ -133,13 +133,16 @@ class Processor:
         content_list: list[dict],
         doc_id: str,
         chunking_strategy: ChunkingType,
+        parse_method: ParseMethod,
         split_by_character: str | None = None,
     ):
         chunking = Chunking()
 
         if not chunking_strategy:
-            chunking_strategy = self._select_chunking_strategy(file_path)
-            logfire.info(f"Starting chunking with strategy: {chunking_strategy}")
+            chunking_strategy = self._select_chunking_strategy(file_path, parse_method)
+            logfire.info(
+                f"Starting chunking with strategy: {chunking_strategy} - {parse_method}"
+            )
 
         if chunking_strategy == ChunkingType.STRUCTURE.value:
             chunks = chunking.chunk_by_structure(
@@ -186,7 +189,6 @@ class Processor:
 
         ext = file_path.suffix.lower()
 
-        # Todo check cache
         cache_key = self._generate_cache_key(file_path, parse_method.value)
 
         cache_result = self._get_cached_result(cache_key, file_path, parse_method.value)
@@ -276,7 +278,6 @@ class Processor:
         chunking_strategy: ChunkingType,
         doc_id: str | None = None,
         split_by_character: str = "\n\n",
-        parser: str | None = "auto",
     ):
         file_path = Path(file_path)
 
@@ -291,11 +292,15 @@ class Processor:
         )
         logfire.info(f"Stage 1 complete: {len(content_list)} content list")
 
+        if parse_method == ParseMethod.DOCLING:
+            text_content, multimodal_items = separate_content(content_list)
+
         chunks = await self._chunk_doc_content(
-            content_list=content_list,
+            content_list=text_content,
             file_path=file_path,
             doc_id=doc_id,
             chunking_strategy=chunking_strategy,
+            parse_method=parse_method,
         )
         self.in_storage.upload(key="chunks", data=chunks)
         logfire.info(f"Document chunking completed: {len(chunks)}")

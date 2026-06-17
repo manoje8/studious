@@ -3,10 +3,15 @@ from typing import Any
 import logfire
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from src.ingestion.chunking.Chunker import Chunker
 from src.utils.tokenizer import Tokenizer, TikTokenTokenizer
 
 
-class RecursiveCharacterSplitter:
+class RecursiveCharacterChunker(Chunker):
+    """
+    For articles, books, reports
+    """
+
     def __init__(self, tokenizer: Tokenizer = None):
         self.tokenizer = tokenizer or TikTokenTokenizer(model_name="gpt-4o-mini")
 
@@ -23,7 +28,7 @@ class RecursiveCharacterSplitter:
             )
             return False
 
-    def chunking_by_recursive(
+    def chunk(
         self,
         content: str,
         chunk_size: int = 1200,

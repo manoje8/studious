@@ -58,3 +58,15 @@ class ChunkingType(str, Enum):
 class ParseMethod(str, Enum):
     GOOGLE_DOC_AI = "google_doc_ai"
     DOCLING = "docling"
+
+
+class ChunkType(str, Enum):
+    TEXT = "text"
+    TABLE = "table"
+    IMAGE = "image"
+    CODE = "code"
+    EQUATION = "equation"
+
+
+if __name__ == "__main__":
+    print(ChunkType.EQUATION.value)
