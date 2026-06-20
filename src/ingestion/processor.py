@@ -6,9 +6,10 @@ from typing import Dict
 
 import logfire
 
+from src.ingestion.chunking.chunker_factory import create_chunker
+from src.ingestion.chunking.chunking_config import ChunkingConfig
 from src.ingestion.parser.docling_parser import DoclingParser
 from src.ingestion.parser.google_doc_ai import GoogleDocAI
-from src.ingestion.chunking.chunk import Chunking
 from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
 from src.services.sparse_index import SparseSearchIndex
@@ -18,8 +19,8 @@ from src.utils.constants import (
     OFFICE_FORMATS,
     TEXT_FORMATS,
     StorageType,
-    ChunkingType,
     ParseMethod,
+    ChunkerStrategy,
 )
 from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
@@ -71,20 +72,15 @@ class Processor:
         else:
             raise ValueError(f"Unsupported Parser type: {parser_type}")
 
-    def _select_chunking_strategy(
-        self, file_path: Path, parse_method: ParseMethod
-    ) -> str:
+    def _select_chunking_strategy(self, file_path: Path) -> str:
         suffix = file_path.suffix.lower()
 
-        if parse_method == ParseMethod.GOOGLE_DOC_AI:
-            return ChunkingType.SPLITTER.value
+        if suffix in HTML_FORMATS | TEXT_FORMATS:
+            return ChunkerStrategy.RECURSIVE_CHARACTER
+        elif suffix in OFFICE_FORMATS or suffix == ".pdf":
+            return ChunkerStrategy.RECURSIVE_CHARACTER
         else:
-            if suffix in HTML_FORMATS | TEXT_FORMATS:
-                return ChunkingType.STRUCTURE.value
-            elif suffix in OFFICE_FORMATS or suffix == ".pdf":
-                return ChunkingType.FIXED.value
-            else:
-                return ChunkingType.SPLITTER.value
+            return ChunkerStrategy.FIXED
 
     def _generate_cache_key(self, file_path: Path, parse_method: str) -> str:
         mtime = file_path.stat().st_mtime
@@ -130,48 +126,30 @@ class Processor:
     async def _chunk_doc_content(
         self,
         file_path: Path,
-        content_list: list[dict],
+        content_list: str,
         doc_id: str,
-        chunking_strategy: ChunkingType,
         parse_method: ParseMethod,
         split_by_character: str | None = None,
     ):
-        chunking = Chunking()
+        chunking_strategy = self._select_chunking_strategy(file_path)
+        logfire.info(
+            f"Starting chunking with strategy: {chunking_strategy} - {parse_method}"
+        )
 
-        if not chunking_strategy:
-            chunking_strategy = self._select_chunking_strategy(file_path, parse_method)
-            logfire.info(
-                f"Starting chunking with strategy: {chunking_strategy} - {parse_method}"
-            )
+        chunking_config = ChunkingConfig(type=chunking_strategy)
 
-        if chunking_strategy == ChunkingType.STRUCTURE.value:
-            chunks = chunking.chunk_by_structure(
-                content_list=content_list,
-                doc_id=doc_id or file_path.stem,
-                source_file=str(file_path),
-            )
-        elif chunking_strategy == ChunkingType.FIXED.value:
-            chunks = chunking.chunk_fixed(
-                content_list=content_list,
-                doc_id=doc_id or file_path.stem,
-                source_file=str(file_path),
-                split_by_character=split_by_character or "\n\n",
-            )
-        else:
-            chunks = chunking.splitter(
-                content_list=content_list,
-                doc_id=doc_id or file_path.stem,
-                source_file=str(file_path),
-            )
+        chunker = create_chunker(chunking_config)
+        chunks = chunker.chunk(content_list)
 
         logfire.info(
             f"Chunking complete: {len(chunks)} chunks produced from {len(content_list)} blocks"
         )
 
-        enriched = chunking.build_parent_child_chunk(chunks)
-        logfire.info(f"Build parent child chunk: {len(enriched)}")
+        # TODO: Update parent child chunking
+        # enriched = chunking.build_parent_child_chunk(chunks)
+        # logfire.info(f"Build parent child chunk: {len(enriched)}")
 
-        return enriched
+        return chunks
 
     async def process_document_complete(
         self,
@@ -275,7 +253,6 @@ class Processor:
         self,
         file_path: str,
         parse_method: ParseMethod,
-        chunking_strategy: ChunkingType,
         doc_id: str | None = None,
         split_by_character: str = "\n\n",
     ):
@@ -293,13 +270,12 @@ class Processor:
         logfire.info(f"Stage 1 complete: {len(content_list)} content list")
 
         if parse_method == ParseMethod.DOCLING:
-            text_content, multimodal_items = separate_content(content_list)
+            content_list, multimodal_items = separate_content(content_list)
 
         chunks = await self._chunk_doc_content(
-            content_list=text_content,
             file_path=file_path,
+            content_list=content_list,
             doc_id=doc_id,
-            chunking_strategy=chunking_strategy,
             parse_method=parse_method,
         )
         self.in_storage.upload(key="chunks", data=chunks)

@@ -13,6 +13,12 @@ class SparseSearchIndex:
     def build(self, chunks: list[dict]):
         """Build BM25 index from chunk texts."""
 
+        if not chunks:
+            logfire.warning("No chunks provided to build BM25 index")
+            self.index = None
+            self.chunks = []
+            return
+
         tokenized = [chunk["text"].lower().split() for chunk in chunks]
 
         self.index = BM25Okapi(tokenized)

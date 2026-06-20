@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 SUPPORTED_PARSERS = "DocumentAI"
 HTML_FORMATS = {".html", ".htm", ".xhtml"}
@@ -36,31 +36,27 @@ BLOCK_TAGS = {"p", "li", "blockquote", "pre", "td", "th", "dd", "dt"}
 HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 
 
-GOOGLE_DOC_AI = "google_doc_ai"
-
-
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 50
 MIN_CHUNK_SIZE = 50
 
 
-class StorageType(Enum):
+class StorageType(StrEnum):
     LOCAL = "local"
     GCS = "gcs"
 
 
-class ChunkingType(str, Enum):
-    STRUCTURE = "structure"
-    FIXED = "fixed"
-    SPLITTER = "splitter"
+class ChunkingType(StrEnum):
+    TOKEN = "token"
+    SENTENCE = "sentence"
 
 
-class ParseMethod(str, Enum):
+class ParseMethod(StrEnum):
     GOOGLE_DOC_AI = "google_doc_ai"
     DOCLING = "docling"
 
 
-class ChunkType(str, Enum):
+class ChunkType(StrEnum):
     TEXT = "text"
     TABLE = "table"
     IMAGE = "image"
@@ -68,5 +64,6 @@ class ChunkType(str, Enum):
     EQUATION = "equation"
 
 
-if __name__ == "__main__":
-    print(ChunkType.EQUATION.value)
+class ChunkerStrategy(StrEnum):
+    FIXED = "fixed"
+    RECURSIVE_CHARACTER = "recursive_character"

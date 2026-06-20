@@ -1,8 +1,5 @@
 import re
 from dataclasses import dataclass, field
-from typing import List
-
-import logfire
 
 from src.utils.tokenizer import Tokenizer, TikTokenTokenizer
 
@@ -47,6 +44,7 @@ class Chunk:
     parent_token_count: int = 0
     parent_window_start: int = 0
     parent_window_end: int = 0
+    metadata: dict = field(default_factory=dict)
 
     def to_quant_payload(self) -> dict:
         return {
@@ -100,153 +98,6 @@ class Chunking:
             page_numbers=page_numbers or [],
             token_count=self.tokenizer.count(text),
         )
-
-    def chunk_fixed(
-        self,
-        content_list: list[dict],
-        doc_id: str,
-        source_file: str,
-        chunk_size: int = 512,
-        max_token: int = 512,
-        overlap: int = 50,
-        split_by_character: str = "\n\n",
-    ) -> list[Chunk]:
-        """
-        Split content into fixed-size token chunks with optional overlap.
-
-        Parameters
-        ----------
-        content_list:
-            List of block dicts with a ``"text"`` key, or plain strings.
-        doc_id:
-            Unique identifier of the source document.
-        source_file:
-            Path to the originating file.
-        chunk_size:
-            Target number of tokens per chunk.
-        max_token:
-            Hard ceiling on tokens per chunk (must be >= chunk_size).
-        overlap:
-            Number of tokens carried over from the previous chunk.
-        split_by_character:
-            Delimiter used to join and then split the source text into segments.
-        """
-
-        if max_token < chunk_size:
-            raise ValueError("max_token must be greater than or equal to chunk_size")
-
-        texts = []
-        for block in content_list:
-            if isinstance(block, dict):
-                text = self._clean_text(block.get("text", ""))
-            else:
-                text = self._clean_text(str(block))
-
-            if text:
-                texts.append(text)
-
-        full_text = split_by_character.join(texts)
-
-        segments = full_text.split(split_by_character)
-
-        chunks = []
-        current_tokens: List[int] = []
-        chunk_index: int = 0
-
-        def flush():
-            nonlocal chunk_index, current_tokens
-            if current_tokens:
-                chunk_text = self.tokenizer.decode(current_tokens)
-                chunks.append(
-                    self._make_chunk(
-                        text=chunk_text,
-                        chunk_index=chunk_index,
-                        doc_id=doc_id,
-                        source_file=source_file,
-                        chunk_type="fixed",
-                    )
-                )
-                chunk_index += 1
-                current_tokens = current_tokens[-overlap:] if overlap > 0 else []
-
-        for segment in segments:
-            segment_token = self.tokenizer.encode(segment)
-
-            while len(segment_token) > chunk_size:
-                available = chunk_size - len(current_tokens)
-                current_tokens.extend(segment_token[:available])
-                segment_token = segment_token[available:]
-                flush()
-
-            if len(current_tokens) + len(segment_token) > chunk_size:
-                flush()
-
-            current_tokens.extend(segment_token)
-
-        flush()
-        return chunks
-
-    def splitter(
-        self,
-        content_list,
-        doc_id: str,
-        source_file: str,
-        chunk_size: int = 1500,
-        split_by_character: str = "\n\n",
-    ):
-        """
-        Simple paragraph-aware splitter for plain string input.
-
-        Parameters
-        ----------
-        content_list:
-            Raw string to be split (not a list of dicts).
-        doc_id:
-            Unique identifier of the source document.
-        source_file:
-            Path to the originating file.
-        chunk_size:
-            Maximum character length per chunk.
-        split_by_character:
-            Delimiter used to identify paragraph boundaries.
-        """
-
-        paragraphs = content_list.split(split_by_character)
-        chunks = []
-        current_chunk = ""
-        chunk_index = 0
-
-        for p in paragraphs:
-            if len(current_chunk) + len(p) < chunk_size:
-                current_chunk += p + split_by_character
-            else:
-                if current_chunk.strip():
-                    chunks.append(
-                        Chunk(
-                            text="".join(current_chunk.strip()),
-                            chunk_index=chunk_index,
-                            doc_id=doc_id,
-                            source_file=source_file,
-                            chunk_type="splitter",
-                        )
-                    )
-                    chunk_index += 1
-                current_chunk = p + split_by_character
-
-        if current_chunk.strip():
-            chunks.append(
-                Chunk(
-                    text="".join(current_chunk.strip()),
-                    chunk_index=chunk_index,
-                    doc_id=doc_id,
-                    source_file=source_file,
-                    chunk_type="splitter",
-                )
-            )
-
-        logfire.info(f"Generated {len(chunks)} chunks")
-
-        return chunks
 
     def build_parent_child_chunk(
         self, chunks: list[Chunk], parent_window: int = 3

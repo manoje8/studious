@@ -24,6 +24,12 @@ def check_env():
 
 async def bootstrap_sparse_index(storage_service, sparse_index):
     all_chunks = await storage_service.scroll_all_chunks()
+
+    if not all_chunks:
+        logfire.warning("No chunks available to build sparse index")
+        return
+
+    logfire.info(f"Building BM25 index with {len(all_chunks)} chunks...")
     sparse_index.build(all_chunks)
 
 

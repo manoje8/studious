@@ -8,7 +8,7 @@ import streamlit as st
 import logfire
 from dotenv import load_dotenv
 
-from src.utils.constants import ChunkingType, ParseMethod
+from src.utils.constants import ParseMethod
 
 load_dotenv()
 
@@ -67,13 +67,6 @@ with st.sidebar:
             index=0,
         )
 
-        chunking_strategy = st.selectbox(
-            "Chunking Strategy",
-            options=list(ChunkingType),
-            format_func=lambda x: x.value.title(),
-            index=0,
-        )
-
         if st.button("Upload Document", type="primary", use_container_width=True):
             with st.spinner(f"Uploading {uploaded_file.name}..."):
                 try:
@@ -89,7 +82,6 @@ with st.sidebar:
                     payload = {
                         "file_path": str(temp_path),
                         "parse_method": parse_method,
-                        "chunking_strategy": chunking_strategy,
                         "doc_id": doc_id,
                     }
 

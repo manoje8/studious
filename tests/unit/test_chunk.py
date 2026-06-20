@@ -1,19 +1,23 @@
 """
-Unit tests for src/ingestion/chunking/chunk.py
+Unit tests for src/ingestion/chunking
 
 Covers:
 - Chunk dataclass construction and to_quant_payload()
 - Chunking._clean_text()
-- Chunking.chunk_by_structure()
-- Chunking.chunk_fixed()
-- Chunking.splitter()
+- FixedWindow chunker
+- RecursiveCharacterChunker
+- ChunkerFactory and create_chunker
 - Chunking.build_parent_child_chunk()
 """
 
 import pytest
-from unittest.mock import patch
 
 from src.ingestion.chunking.chunk import Chunk, Chunking
+from src.ingestion.chunking.fixed_window import FixedWindow
+from src.ingestion.chunking.recursive_character import RecursiveCharacterChunker
+from src.ingestion.chunking.chunker_factory import create_chunker
+from src.ingestion.chunking.chunking_config import ChunkingConfig
+from src.utils.constants import ChunkerStrategy
 
 # ---------------------------------------------------------------------------
 # Helpers / shared fixtures
@@ -172,342 +176,133 @@ class TestCleanText:
 
 
 # ===========================================================================
-# Chunking.chunk_by_structure
+# FixedWindow chunker
 # ===========================================================================
 
 
-class TestChunkByStructure:
-    DOC_ID = "doc-struct"
-    SOURCE = "report.pdf"
-
-    # --- Basic behaviour ---
-
-    def test_returns_list(self, chunker):
-        result = chunker.chunk_by_structure([], self.DOC_ID, self.SOURCE)
-        assert isinstance(result, list)
-
-    def test_empty_input_returns_no_chunks(self, chunker):
-        result = chunker.chunk_by_structure([], self.DOC_ID, self.SOURCE)
-        assert result == []
-
-    def test_single_paragraph_creates_one_chunk(self, chunker):
-        content = [make_block("Hello world")]
-        result = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert len(result) == 1
-        assert result[0].text == "Hello world"
-
-    def test_chunk_type_is_structure(self, chunker):
-        content = [make_block("Some text")]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert chunks[0].chunk_type == "structure"
-
-    def test_chunk_metadata(self, chunker):
-        content = [make_block("Para")]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        c = chunks[0]
-        assert c.doc_id == self.DOC_ID
-        assert c.source_file == self.SOURCE
-        assert c.chunk_index == 0
-
-    # --- Heading splits ---
-
-    def test_heading_flushes_previous_blocks(self, chunker):
-        content = [
-            make_block("Intro paragraph"),
-            make_block("Chapter 1", "heading"),
-            make_block("Body text"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        # First chunk from intro, second from body
-        assert len(chunks) == 2
-        assert "Intro" in chunks[0].text
-
-    def test_section_title_updated_after_heading(self, chunker):
-        content = [
-            make_block("Chapter 1", "heading"),
-            make_block("Content under ch1"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert chunks[0].section_title == "Chapter 1"
-
-    def test_default_section_title_is_introduction(self, chunker):
-        content = [make_block("Some text before any heading")]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert chunks[0].section_title == "Introduction"
-
-    def test_consecutive_headings_no_empty_chunks(self, chunker):
-        content = [
-            make_block("Heading A", "heading"),
-            make_block("Heading B", "heading"),
-            make_block("Content B"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        # Only 1 real chunk (Content B); no empty chunk between headings
-        assert all(c.text.strip() != "" for c in chunks)
-
-    # --- Table handling ---
-
-    def test_table_block_gets_its_own_chunk(self, chunker):
-        content = [make_block("Table data", "table")]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 1
-        assert chunks[0].chunk_type == "table"
-
-    def test_table_flushes_accumulated_paragraphs(self, chunker):
-        content = [
-            make_block("Para before table"),
-            make_block("col1 | col2", "table"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 2
-        assert chunks[0].chunk_type == "structure"
-        assert chunks[1].chunk_type == "table"
-
-    def test_table_block_types_field(self, chunker):
-        content = [make_block("Table data", "table")]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert chunks[0].block_types == ["table"]
-
-    # --- Block types ---
-
-    def test_block_types_recorded_for_paragraphs(self, chunker):
-        content = [
-            make_block("Para 1", "paragraph"),
-            make_block("Para 2", "paragraph"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert "paragraph" in chunks[0].block_types
-
-    # --- Non-dict input ---
-
-    def test_string_blocks_treated_as_paragraphs(self, chunker):
-        content = ["Plain string block"]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 1
-        assert "Plain string block" in chunks[0].text
-
-    # --- Whitespace / empty blocks ---
-
-    def test_empty_text_blocks_skipped(self, chunker):
-        content = [make_block(""), make_block("   "), make_block("Real content")]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 1
-        assert "Real content" in chunks[0].text
-
-    # --- Multiple paragraphs merged ---
-
-    def test_multiple_paragraphs_merged_into_one_chunk(self, chunker):
-        content = [
-            make_block("First paragraph"),
-            make_block("Second paragraph"),
-            make_block("Third paragraph"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 1
-        assert "First paragraph" in chunks[0].text
-        assert "Second paragraph" in chunks[0].text
-
-    # --- Chunk index increments ---
-
-    def test_chunk_index_increments_correctly(self, chunker):
-        content = [
-            make_block("Para 1"),
-            make_block("Heading", "heading"),
-            make_block("Para 2"),
-            make_block("Another heading", "heading"),
-            make_block("Para 3"),
-        ]
-        chunks = chunker.chunk_by_structure(content, self.DOC_ID, self.SOURCE)
-        for i, c in enumerate(chunks):
-            assert c.chunk_index == i
-
-
-# ===========================================================================
-# Chunking.chunk_fixed
-# ===========================================================================
-
-
-class TestChunkFixed:
+class TestFixedWindow:
     DOC_ID = "doc-fixed"
     SOURCE = "report.pdf"
 
-    def _make_content(self, words: int) -> list[dict]:
-        text = " ".join(f"word{i}" for i in range(words))
-        return [make_block(text)]
-
-    # --- Basic ---
-
-    def test_returns_list(self, chunker):
-        result = chunker.chunk_fixed([], self.DOC_ID, self.SOURCE)
+    def test_returns_list(self):
+        chunker = FixedWindow(size=5, overlap=1)
+        result = chunker.chunk(
+            "word1 word2 word3", doc_id=self.DOC_ID, source_file=self.SOURCE
+        )
         assert isinstance(result, list)
 
-    def test_empty_input_returns_no_chunks(self, chunker):
-        result = chunker.chunk_fixed([], self.DOC_ID, self.SOURCE)
+    def test_empty_input_returns_no_chunks(self):
+        chunker = FixedWindow(size=5, overlap=1)
+        result = chunker.chunk("", doc_id=self.DOC_ID, source_file=self.SOURCE)
         assert result == []
 
-    def test_short_text_fits_in_single_chunk(self, chunker):
-        content = [make_block("short text")]
-        chunks = chunker.chunk_fixed(content, self.DOC_ID, self.SOURCE, chunk_size=512)
+    def test_invalid_overlap_raises_value_error(self):
+        with pytest.raises(ValueError):
+            FixedWindow(size=5, overlap=5)
+        with pytest.raises(ValueError):
+            FixedWindow(size=5, overlap=6)
+
+    def test_short_text_fits_in_single_chunk(self):
+        chunker = FixedWindow(size=10, overlap=2)
+        chunks = chunker.chunk(
+            "hello world", doc_id=self.DOC_ID, source_file=self.SOURCE
+        )
         assert len(chunks) == 1
-        assert chunks[0].chunk_type == "fixed"
+        assert chunks[0].text == "hello world"
+        assert chunks[0].chunk_type == "text"
+        assert chunks[0].doc_id == self.DOC_ID
+        assert chunks[0].source_file == self.SOURCE
 
-    def test_chunk_metadata(self, chunker):
-        content = [make_block("hello world")]
-        chunks = chunker.chunk_fixed(content, self.DOC_ID, self.SOURCE)
-        c = chunks[0]
-        assert c.doc_id == self.DOC_ID
-        assert c.source_file == self.SOURCE
+    def test_large_text_split_into_multiple_chunks(self):
+        text = "w0 w1 w2 w3 w4 w5 w6 w7 w8 w9"
+        chunker = FixedWindow(size=4, overlap=1)
+        chunks = chunker.chunk(text, doc_id=self.DOC_ID, source_file=self.SOURCE)
+        assert len(chunks) == 4
+        assert chunks[0].text == "w0 w1 w2 w3"
+        assert chunks[1].text == "w3 w4 w5 w6"
+        assert chunks[2].text == "w6 w7 w8 w9"
+        assert chunks[3].text == "w9"
 
-    # --- Splitting ---
-
-    def test_large_text_split_into_multiple_chunks(self, chunker):
-        content = self._make_content(1100)
-        chunks = chunker.chunk_fixed(
-            content, self.DOC_ID, self.SOURCE, chunk_size=512, overlap=50
-        )
-        assert len(chunks) > 1
-
-    def test_each_chunk_within_size_limit(self, chunker):
-        content = self._make_content(2000)
-        chunk_size = 100
-        chunks = chunker.chunk_fixed(
-            content, self.DOC_ID, self.SOURCE, chunk_size=chunk_size, overlap=10
-        )
-        for c in chunks:
-            token_count = chunker.tokenizer.count(c.text)
-            # Allow a small margin for overlap tokens that were prepended
-            assert token_count <= chunk_size + 10 + 5
-
-    def test_chunk_index_increments_correctly(self, chunker):
-        content = self._make_content(1200)
-        chunks = chunker.chunk_fixed(
-            content, self.DOC_ID, self.SOURCE, chunk_size=512, overlap=0
-        )
-        for i, c in enumerate(chunks):
-            assert c.chunk_index == i
-
-    # --- Overlap ---
-
-    def test_overlap_zero_no_repeated_content(self, chunker):
-        """With overlap=0 consecutive chunks should not share tokens at boundaries."""
-        words = [f"w{i}" for i in range(200)]
-        content = [make_block(" ".join(words))]
-        chunks = chunker.chunk_fixed(
-            content, self.DOC_ID, self.SOURCE, chunk_size=100, overlap=0
-        )
-        # Each word should appear only once across all chunks
-        all_words = []
-        for c in chunks:
-            all_words.extend(c.text.split())
-        assert len(all_words) == len(set(all_words))
-
-    # --- String block input ---
-
-    def test_string_block_handled_correctly(self, chunker):
-        content = ["plain string content"]
-        chunks = chunker.chunk_fixed(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 1
-        assert "plain string content" in chunks[0].text
-
-    # --- Split by character ---
-
-    def test_custom_split_character(self, chunker):
-        content = [make_block("part1\npart2\npart3", "paragraph")]
-        chunks = chunker.chunk_fixed(
-            content,
-            self.DOC_ID,
-            self.SOURCE,
-            chunk_size=512,
-            split_by_character="\n",
-        )
-        # All parts should be present in the output
-        combined = " ".join(c.text for c in chunks)
-        assert "part1" in combined
-        assert "part2" in combined
-        assert "part3" in combined
-
-    # --- Empty / whitespace-only blocks ---
-
-    def test_empty_blocks_ignored(self, chunker):
-        content = [make_block(""), make_block("   "), make_block("actual content")]
-        chunks = chunker.chunk_fixed(content, self.DOC_ID, self.SOURCE)
-        assert len(chunks) == 1
-        assert "actual content" in chunks[0].text
-
-    # --- Multiple blocks joined ---
-
-    def test_multiple_blocks_joined(self, chunker):
-        content = [make_block("block one"), make_block("block two")]
-        chunks = chunker.chunk_fixed(content, self.DOC_ID, self.SOURCE, chunk_size=512)
-        combined = " ".join(c.text for c in chunks)
-        assert "block one" in combined
-        assert "block two" in combined
+        for idx, c in enumerate(chunks):
+            assert c.chunk_index == idx
+            assert c.doc_id == self.DOC_ID
+            assert c.source_file == self.SOURCE
 
 
 # ===========================================================================
-# Chunking.splitter
+# RecursiveCharacterChunker
 # ===========================================================================
 
 
-class TestSplitter:
-    DOC_ID = "doc-split"
-    SOURCE = "report.pdf"
+class TestRecursiveCharacterChunker:
+    DOC_ID = "doc-rec"
+    SOURCE = "manual.md"
 
-    def test_returns_list(self, chunker):
-        result = chunker.splitter("", self.DOC_ID, self.SOURCE)
+    def test_returns_list(self):
+        chunker = RecursiveCharacterChunker(size=100, overlap=10)
+        result = chunker.chunk(
+            "This is some text to chunk.", doc_id=self.DOC_ID, source_file=self.SOURCE
+        )
         assert isinstance(result, list)
 
-    def test_empty_string_returns_no_chunks(self, chunker):
-        result = chunker.splitter("", self.DOC_ID, self.SOURCE)
-        assert result == []
+    def test_empty_input_returns_no_chunks(self):
+        chunker = RecursiveCharacterChunker(size=100, overlap=10)
+        assert chunker.chunk("", doc_id=self.DOC_ID, source_file=self.SOURCE) == []
+        assert chunker.chunk("   ", doc_id=self.DOC_ID, source_file=self.SOURCE) == []
 
-    def test_single_paragraph_below_limit(self, chunker):
-        text = "This is a short paragraph."
-        chunks = chunker.splitter(text, self.DOC_ID, self.SOURCE, chunk_size=500)
+    def test_chunk_metadata_and_token_count(self):
+        chunker = RecursiveCharacterChunker(size=100, overlap=10)
+        chunks = chunker.chunk(
+            "Hello world.", doc_id=self.DOC_ID, source_file=self.SOURCE
+        )
         assert len(chunks) == 1
-        assert chunks[0].text == text
-
-    def test_chunk_type_is_splitter(self, chunker):
-        chunks = chunker.splitter("Some text.", self.DOC_ID, self.SOURCE)
-        assert chunks[0].chunk_type == "splitter"
-
-    def test_chunk_metadata(self, chunker):
-        chunks = chunker.splitter("Hello.", self.DOC_ID, self.SOURCE)
         c = chunks[0]
         assert c.doc_id == self.DOC_ID
         assert c.source_file == self.SOURCE
+        assert c.chunk_type == "text"
+        assert c.token_count > 0
 
-    def test_long_text_split_into_multiple_chunks(self, chunker):
-        paragraph = "word " * 200  # 200 words, ~1000 chars
-        text = "\n\n".join([paragraph.strip()] * 10)
-        chunks = chunker.splitter(text, self.DOC_ID, self.SOURCE, chunk_size=500)
+    def test_large_text_splits(self):
+        chunker = RecursiveCharacterChunker(size=5, overlap=0)
+        text = "This is a long sentence that should be split into multiple chunks."
+        chunks = chunker.chunk(text, doc_id=self.DOC_ID, source_file=self.SOURCE)
         assert len(chunks) > 1
+        for idx, c in enumerate(chunks):
+            assert c.chunk_index == idx
+            assert len(c.text) > 0
 
-    def test_chunk_index_increments(self, chunker):
-        paragraph = "a " * 300
-        text = "\n\n".join([paragraph.strip()] * 5)
-        chunks = chunker.splitter(text, self.DOC_ID, self.SOURCE, chunk_size=500)
-        for i, c in enumerate(chunks):
-            assert c.chunk_index == i
+    def test_check_installation(self):
+        chunker = RecursiveCharacterChunker()
+        assert chunker.check_installation() is True
 
-    def test_whitespace_only_input(self, chunker):
-        result = chunker.splitter("   \n\n   ", self.DOC_ID, self.SOURCE)
-        assert result == []
 
-    def test_custom_split_character(self, chunker):
-        text = "part1|part2|part3"
-        chunks = chunker.splitter(
-            text, self.DOC_ID, self.SOURCE, chunk_size=2000, split_by_character="|"
+# ===========================================================================
+# ChunkerFactory
+# ===========================================================================
+
+
+class TestChunkerFactory:
+    def test_create_fixed_chunker(self):
+        config = ChunkingConfig(type=ChunkerStrategy.FIXED, size=256, overlap=32)
+        chunker = create_chunker(config)
+        assert isinstance(chunker, FixedWindow)
+        assert chunker.chunk_size == 256
+        assert chunker.overlap == 32
+
+    def test_create_recursive_character_chunker(self):
+        config = ChunkingConfig(
+            type=ChunkerStrategy.RECURSIVE_CHARACTER, size=1000, overlap=50
         )
-        assert len(chunks) == 1
-        combined = chunks[0].text
-        assert "part1" in combined
+        chunker = create_chunker(config)
+        assert isinstance(chunker, RecursiveCharacterChunker)
+        assert chunker.size == 1000
+        assert chunker.overlap == 50
 
-    def test_logfire_info_called(self, chunker):
-        """Verify logfire.info is invoked after splitting."""
-        with patch("src.ingestion.chunking.chunk.logfire") as mock_logfire:
-            chunker.splitter("hello world.", self.DOC_ID, self.SOURCE)
-            mock_logfire.info.assert_called_once()
+    def test_invalid_strategy_raises_value_error(self):
+        config = ChunkingConfig(type="invalid_strategy", size=100, overlap=10)
+        with pytest.raises(ValueError) as excinfo:
+            create_chunker(config)
+        assert "is not registered in the ChunkerFactory" in str(excinfo.value)
 
 
 # ===========================================================================
