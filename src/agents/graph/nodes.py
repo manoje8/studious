@@ -16,9 +16,14 @@ async def rewrite_query(state: State, short_term, rewriter) -> dict:
 
 # Router
 async def route(state: State, router) -> dict:
-    classification = await router.classify(state["effective_query"])
+    classification = await router.classify(
+        state["effective_query"], conversation_history=state["retrieval_history"]
+    )
 
-    return {"question_category": classification["category"]}
+    return {
+        "question_category": classification["primary_category"],
+        "classification": classification,
+    }
 
 
 # Planner
@@ -103,3 +108,23 @@ async def synthesize(state: State, synthesizer) -> dict:
     sources = list({c["source"] for c in accepted_chunks if c.get("source")})
 
     return {"final_answer": answer, "sources": sources}
+
+
+async def direct_synthesize(state: State, synthesizer) -> dict:
+    """Direct synthesis for simple queries (bypasses planning/grading loop)."""
+    result = await synthesizer.direct_synthesize(state)
+
+    return {
+        "final_answer": result["final_answer"],
+        "sources": result.get("sources", []),
+    }
+
+
+async def handle_simple_response(state: State, synthesizer) -> dict:
+    """Handle chitchat/meta queries without retrieval."""
+    result = await synthesizer.handle_simple_response(state)
+
+    return {
+        "final_answer": result["final_answer"],
+        "sources": [],
+    }

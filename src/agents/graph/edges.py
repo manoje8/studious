@@ -2,8 +2,29 @@ from src.agents.graph.state import State
 
 
 def route_after_classify(state: State) -> str:
-    if state["question_category"] == "chitchat":
-        return "synthesize"
+    category = state.get("question_category", "factual").lower()
+    classify = state.get("classification", {})
+
+    if category in ["chitchat", "meta"]:
+        return "simple_response"
+    if category == "factual":
+        complexity = classify.get("complexity_level", 1)
+        if complexity <= 2:
+            return "direct_synthesize"
+    if category == "summarization":
+        msg = state.get("original_message", "").lower()
+        if any(
+            word in msg
+            for word in [
+                "previous",
+                "discussed",
+                "conversation",
+                "recap",
+                "summarize our",
+            ]
+        ):
+            return "synthesize"
+
     return "plan"
 
 
@@ -35,4 +56,10 @@ def route_after_retrieve(state: State) -> str:
 
 
 def route_after_next_sub_question(state: State) -> str:
-    return "retrieve"
+    sub_questions = state.get("sub_questions", [])
+    current_idx = state.get("current_sub_question_idx", 0)
+
+    if current_idx < len(sub_questions):
+        return "retrieve"
+
+    return "grade"

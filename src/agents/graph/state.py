@@ -11,6 +11,7 @@ class State(TypedDict):
     # planning
     question_category: str
     sub_questions: list[str]
+    classification: dict
 
     # retrieval loop
     current_sub_question_idx: int
@@ -25,3 +26,6 @@ class State(TypedDict):
     doc_id_filter: str | None
 
     resolved_references: list
+
+    # memory
+    episodic_context: str

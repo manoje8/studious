@@ -51,6 +51,7 @@ def _base_state(**overrides) -> dict:
         "sources": [],
         "doc_id_filter": None,
         "resolved_references": [],
+        "episodic_context": "",
     }
     state.update(overrides)
     return state
@@ -65,7 +66,18 @@ class TestRewriteQueryNode:
     @pytest.fixture
     def mock_short_term(self):
         m = MagicMock()
-        m.get_session = AsyncMock(return_value={"history": []})
+        session = MagicMock()
+        session.turns = []
+        session.to_prompt_format = MagicMock(return_value="")
+        m.get_session = AsyncMock(return_value=session)
+        m.append_turn = AsyncMock()
+        m.create_session = AsyncMock(return_value=session)
+        return m
+
+    @pytest.fixture
+    def mock_episodic(self):
+        m = MagicMock()
+        m.load_user_memory = AsyncMock(return_value="")
         return m
 
     @pytest.fixture
@@ -93,10 +105,14 @@ class TestRewriteQueryNode:
         return m
 
     @pytest.mark.asyncio
-    async def test_returns_correct_keys(self, mock_short_term, mock_rewriter_rewritten):
+    async def test_returns_correct_keys(
+        self, mock_short_term, mock_rewriter_rewritten, mock_episodic
+    ):
         state = _base_state()
         result = await rewrite_query(
-            state, short_term=mock_short_term, rewriter=mock_rewriter_rewritten
+            state,
+            short_term=mock_short_term,
+            rewriter=mock_rewriter_rewritten,
         )
 
         assert set(result.keys()) == {
@@ -108,11 +124,13 @@ class TestRewriteQueryNode:
 
     @pytest.mark.asyncio
     async def test_rewritten_query_propagated(
-        self, mock_short_term, mock_rewriter_rewritten
+        self, mock_short_term, mock_rewriter_rewritten, mock_episodic
     ):
         state = _base_state()
         result = await rewrite_query(
-            state, short_term=mock_short_term, rewriter=mock_rewriter_rewritten
+            state,
+            short_term=mock_short_term,
+            rewriter=mock_rewriter_rewritten,
         )
 
         assert result["current_query"] == "What is Retrieval-Augmented Generation?"
@@ -121,10 +139,14 @@ class TestRewriteQueryNode:
         assert result["resolved_references"] == ["RAG"]
 
     @pytest.mark.asyncio
-    async def test_unchanged_query(self, mock_short_term, mock_rewriter_unchanged):
+    async def test_unchanged_query(
+        self, mock_short_term, mock_rewriter_unchanged, mock_episodic
+    ):
         state = _base_state()
         result = await rewrite_query(
-            state, short_term=mock_short_term, rewriter=mock_rewriter_unchanged
+            state,
+            short_term=mock_short_term,
+            rewriter=mock_rewriter_unchanged,
         )
 
         assert result["was_rewritten"] is False
@@ -132,22 +154,26 @@ class TestRewriteQueryNode:
 
     @pytest.mark.asyncio
     async def test_session_fetched_with_correct_id(
-        self, mock_short_term, mock_rewriter_rewritten
+        self, mock_short_term, mock_rewriter_rewritten, mock_episodic
     ):
         state = _base_state(session_id="my-session-42")
         await rewrite_query(
-            state, short_term=mock_short_term, rewriter=mock_rewriter_rewritten
+            state,
+            short_term=mock_short_term,
+            rewriter=mock_rewriter_rewritten,
         )
 
         mock_short_term.get_session.assert_awaited_once_with("my-session-42")
 
     @pytest.mark.asyncio
     async def test_rewriter_called_with_original_message(
-        self, mock_short_term, mock_rewriter_rewritten
+        self, mock_short_term, mock_rewriter_rewritten, mock_episodic
     ):
         state = _base_state(original_message="Tell me about vector databases")
         await rewrite_query(
-            state, short_term=mock_short_term, rewriter=mock_rewriter_rewritten
+            state,
+            short_term=mock_short_term,
+            rewriter=mock_rewriter_rewritten,
         )
 
         mock_rewriter_rewritten.rewrite.assert_awaited_once()
@@ -166,7 +192,7 @@ class TestRouteNode:
     @pytest.fixture
     def mock_router(self):
         m = MagicMock()
-        m.classify = AsyncMock(return_value={"category": "factual"})
+        m.classify = AsyncMock(return_value={"primary_category": "factual"})
         return m
 
     @pytest.mark.asyncio
@@ -182,12 +208,16 @@ class TestRouteNode:
         state = _base_state(effective_query="How do embeddings work?")
         await route(state, router=mock_router)
 
-        mock_router.classify.assert_awaited_once_with("How do embeddings work?")
+        mock_router.classify.assert_awaited_once_with(
+            "How do embeddings work?", conversation_history=[]
+        )
 
     @pytest.mark.asyncio
     async def test_different_categories(self, mock_router):
         for category in ["factual", "analytical", "comparative"]:
-            mock_router.classify = AsyncMock(return_value={"category": category})
+            mock_router.classify = AsyncMock(
+                return_value={"primary_category": category}
+            )
             state = _base_state()
             result = await route(state, router=mock_router)
             assert result["question_category"] == category
@@ -607,9 +637,9 @@ class TestRouteAfterClassify:
     """Tests for the route_after_classify edge."""
 
     def test_always_returns_plan(self):
-        for category in ["factual", "analytical", "comparative", "unknown"]:
+        for category in ["meta", "chitchat"]:
             state = _base_state(question_category=category)
-            assert route_after_classify(state) == "plan"
+            assert route_after_classify(state) == "simple_response"
 
 
 # Edge: route_after_retrieve
@@ -703,3 +733,23 @@ class TestRouteAfterNextSubQuestion:
     def test_always_returns_retrieve(self):
         state = _base_state(current_sub_question_idx=1, sub_questions=["q0", "q1"])
         assert route_after_next_sub_question(state) == "retrieve"
+
+
+# ---------------------------------------------------------------------------
+# Node: save_turn
+# ---------------------------------------------------------------------------
+
+
+class TestSaveTurnNode:
+    """Tests for the save_turn node."""
+
+    @pytest.fixture
+    def mock_short_term(self):
+        m = MagicMock()
+        session = MagicMock()
+        session.turns = [MagicMock() for _ in range(4)]  # 4 turns — below threshold
+        session.session_id = "sess-123"
+        m.get_session = AsyncMock(return_value=session)
+        m.append_turn = AsyncMock()
+        m.trim_session = AsyncMock(return_value=[])
+        return m

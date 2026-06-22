@@ -17,6 +17,7 @@ from src.agents.agent_model import RetrievalDecision, RetrievalRound
 from src.llm.base import LLMResponse
 from src.ingestion.embedding import EmbeddedChunk, EmbeddingService
 from src.ingestion.chunking.chunk import Chunk
+from src.agents.agentic.synthesizer import SynthesizerAgent
 
 
 def _base_state(**overrides) -> dict:
@@ -521,3 +522,87 @@ class TestEmbeddingService:
     @pytest.mark.asyncio
     async def test_vector_size_property(self, service):
         assert service.vector_size == 4
+
+
+class TestSynthesizerAgent:
+    """Tests for SynthesizerAgent."""
+
+    @pytest.fixture
+    def mock_llm(self):
+        m = MagicMock()
+        response = MagicMock(spec=LLMResponse)
+        response.text = "Mocked answer"
+        m.complete = AsyncMock(return_value=response)
+        return m
+
+    @pytest.fixture
+    def synthesizer(self, mock_llm):
+        return SynthesizerAgent(llm_client=mock_llm)
+
+    @pytest.mark.asyncio
+    async def test_synthesize_chitchat(self, synthesizer, mock_llm):
+        state = {
+            "question_category": "chitchat",
+            "retrieval_history": [],
+            "accepted_chunks": [],
+            "conversation_history": "User: My name is Hall\nAssistant: Hello Hall!",
+            "original_message": "what is my name?",
+            "effective_query": "what is my name?",
+        }
+        res = await synthesizer.synthesize(state)
+        assert res == "Mocked answer"
+        prompt = mock_llm.complete.call_args[0][0]
+        assert "My name is Hall" in prompt
+        assert "LATEST MESSAGE" in prompt
+
+    @pytest.mark.asyncio
+    async def test_synthesize_from_docs(self, synthesizer, mock_llm):
+        state = {
+            "question_category": "factual",
+            "retrieval_history": [],
+            "accepted_chunks": [
+                {
+                    "source": "doc1.pdf",
+                    "section": "Intro",
+                    "text": "Google was founded in 1998.",
+                }
+            ],
+            "conversation_history": "",
+            "original_message": "When was Google founded?",
+            "effective_query": "When was Google founded?",
+        }
+        res = await synthesizer.synthesize(state)
+        assert res == "Mocked answer"
+        prompt = mock_llm.complete.call_args[0][0]
+        assert "Google was founded in 1998." in prompt
+        assert "Document Context:" in prompt
+
+    @pytest.mark.asyncio
+    async def test_synthesize_from_conversation_fallback(self, synthesizer, mock_llm):
+        state = {
+            "question_category": "factual",
+            "retrieval_history": [],
+            "accepted_chunks": [],
+            "conversation_history": "User: I am testing the code\nAssistant: Great!",
+            "original_message": "what was I doing?",
+            "effective_query": "what was I doing?",
+        }
+        res = await synthesizer.synthesize(state)
+        assert res == "Mocked answer"
+        prompt = mock_llm.complete.call_args[0][0]
+        assert "I am testing the code" in prompt
+        assert "USER'S QUESTION:" in prompt
+
+    @pytest.mark.asyncio
+    async def test_synthesize_insufficient_info(self, synthesizer, mock_llm):
+        state = {
+            "question_category": "factual",
+            "retrieval_history": [],
+            "accepted_chunks": [],
+            "conversation_history": "",
+            "original_message": "Some question",
+            "effective_query": "Some question",
+        }
+        res = await synthesizer.synthesize(state)
+        assert "could not find sufficient information" in res
+        mock_llm.complete.assert_not_awaited()

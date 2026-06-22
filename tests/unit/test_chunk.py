@@ -19,10 +19,6 @@ from src.ingestion.chunking.chunker_factory import create_chunker
 from src.ingestion.chunking.chunking_config import ChunkingConfig
 from src.utils.constants import ChunkerStrategy
 
-# ---------------------------------------------------------------------------
-# Helpers / shared fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def chunker():
@@ -47,11 +43,6 @@ def make_chunks(n: int = 5, chunker_instance=None) -> list[Chunk]:
         )
         for i in range(n)
     ]
-
-
-# ===========================================================================
-# Chunk dataclass
-# ===========================================================================
 
 
 class TestChunkDataclass:
@@ -138,11 +129,6 @@ class TestChunkDataclass:
         assert payload["token_count"] == 42
 
 
-# ===========================================================================
-# Chunking._clean_text
-# ===========================================================================
-
-
 class TestCleanText:
     def test_strips_whitespace(self, chunker):
         assert chunker._clean_text("  hello  ") == "hello"
@@ -173,11 +159,6 @@ class TestCleanText:
         assert "\u2019" in result
         assert "\u201c" in result
         assert "\u201d" in result
-
-
-# ===========================================================================
-# FixedWindow chunker
-# ===========================================================================
 
 
 class TestFixedWindow:
@@ -229,11 +210,6 @@ class TestFixedWindow:
             assert c.source_file == self.SOURCE
 
 
-# ===========================================================================
-# RecursiveCharacterChunker
-# ===========================================================================
-
-
 class TestRecursiveCharacterChunker:
     DOC_ID = "doc-rec"
     SOURCE = "manual.md"
@@ -276,11 +252,6 @@ class TestRecursiveCharacterChunker:
         assert chunker.check_installation() is True
 
 
-# ===========================================================================
-# ChunkerFactory
-# ===========================================================================
-
-
 class TestChunkerFactory:
     def test_create_fixed_chunker(self):
         config = ChunkingConfig(type=ChunkerStrategy.FIXED, size=256, overlap=32)
@@ -303,11 +274,6 @@ class TestChunkerFactory:
         with pytest.raises(ValueError) as excinfo:
             create_chunker(config)
         assert "is not registered in the ChunkerFactory" in str(excinfo.value)
-
-
-# ===========================================================================
-# Chunking.build_parent_child_chunk
-# ===========================================================================
 
 
 class TestBuildParentChildChunk:

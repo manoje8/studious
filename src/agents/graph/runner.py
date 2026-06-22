@@ -1,5 +1,7 @@
 import uuid
 
+from src.agents.memory.conversation_model import ConversationSession
+
 
 class GraphPipeline:
     def __init__(self, graph, short_term_memory):
@@ -10,10 +12,14 @@ class GraphPipeline:
         if not session_id:
             session_id = f"{user_id}_{uuid.uuid4()}"
 
-        config = {"configurable": {"thread_id": session_id}}
+        session: ConversationSession = await self.short_term.get_session(session_id)
+        if not session:
+            session = await self.short_term.create_session(user_id)
+
+        config = {"configurable": {"thread_id": session.session_id}}
 
         initial_state = {
-            "session_id": session_id,
+            "session_id": session.session_id,
             "user_id": user_id,
             "original_message": user_message,
             "effective_query": user_message,
@@ -29,6 +35,7 @@ class GraphPipeline:
             "final_answer": "",
             "sources": [],
             "doc_id_filter": None,
+            "episodic_context": "",
         }
 
         result = await self.graph.ainvoke(initial_state, config=config)

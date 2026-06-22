@@ -17,6 +17,8 @@ from src.agents.graph.nodes import (
     next_sub_question,
     grade,
     synthesize,
+    direct_synthesize,
+    handle_simple_response,
 )
 from src.agents.graph.state import State
 
@@ -46,7 +48,13 @@ def build_rag_graph(
     builder.add_node("next_sub_question", partial(next_sub_question))
     builder.add_node("grade", partial(grade, grader=grader))
     builder.add_node("synthesize", partial(synthesize, synthesizer=synthesizer))
-
+    builder.add_node(
+        "direct_synthesize", partial(direct_synthesize, synthesizer=synthesizer)
+    )
+    builder.add_node(
+        "handle_simple_response",
+        partial(handle_simple_response, synthesizer=synthesizer),
+    )
     # Edges
     builder.set_entry_point("rewrite_query")
     builder.add_edge("rewrite_query", "route")
@@ -54,8 +62,10 @@ def build_rag_graph(
         "route",
         route_after_classify,
         {
-            "synthesize": "synthesize",
             "plan": "plan",
+            "direct_synthesize": "direct_synthesize",
+            "simple_response": "handle_simple_response",
+            "synthesize": "synthesize",
         },
     )
     builder.add_edge("plan", "retrieve")
@@ -68,6 +78,7 @@ def build_rag_graph(
                 "refine_query": "refine_query",
                 "next_sub_question": "next_sub_question",
                 "grade": "grade",
+                "retrieve": "retrieve",
             },
         )
         builder.add_edge("refine_query", "retrieve")
@@ -76,13 +87,22 @@ def build_rag_graph(
             route_after_next_sub_question,
             {
                 "retrieve": "retrieve",
+                "grade": "grade",
             },
         )
     else:
         builder.add_edge("retrieve", "next_sub_question")
-        builder.add_edge("next_sub_question", "grade")
+        builder.add_conditional_edges(
+            "next_sub_question",
+            route_after_next_sub_question,
+            {
+                "retrieve": "retrieve",
+                "grade": "grade",
+            },
+        )
 
-    builder.add_edge("grade", "synthesize")
+    builder.add_edge("direct_synthesize", END)
+    builder.add_edge("handle_simple_response", END)
     builder.add_edge("synthesize", END)
 
     return builder

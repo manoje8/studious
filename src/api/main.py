@@ -51,6 +51,9 @@ async def lifespan(app: FastAPI):
 
     # llm_client = GeminiClient()
     llm_client = GroqClient()
+
+    # episodic = EpisodicMemoryManager(llm_client=llm_client, pool=pool)
+    # await episodic.setup()
     short_term = ShortTermMemoryManager(config.REDIS_URL)
 
     embedding_service = EmbeddingService(
