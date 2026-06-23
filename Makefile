@@ -1,4 +1,4 @@
-.PHONY: lint, format, run-server, run-ui
+.PHONY: lint, format, server-run, ui-run
 
 lint:
 	ruff check .
@@ -8,10 +8,10 @@ format:
 	ruff check --fix .
 	black .
 
-run-server:
+server-run:
 	python src/api/main.py
 
-run-ui:
+ui-run:
 	streamlit run web_ui/main.py
 
 test:

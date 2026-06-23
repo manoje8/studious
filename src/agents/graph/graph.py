@@ -63,7 +63,7 @@ def build_rag_graph(
         route_after_classify,
         {
             "plan": "plan",
-            "direct_synthesize": "direct_synthesize",
+            "direct_synthesize": "plan",
             "simple_response": "handle_simple_response",
             "synthesize": "synthesize",
         },
@@ -92,14 +92,8 @@ def build_rag_graph(
         )
     else:
         builder.add_edge("retrieve", "next_sub_question")
-        builder.add_conditional_edges(
-            "next_sub_question",
-            route_after_next_sub_question,
-            {
-                "retrieve": "retrieve",
-                "grade": "grade",
-            },
-        )
+        builder.add_edge("next_sub_question", "grade")
+        builder.add_edge("grade", "synthesize")
 
     builder.add_edge("direct_synthesize", END)
     builder.add_edge("handle_simple_response", END)

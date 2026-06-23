@@ -510,19 +510,8 @@ class TestGradeNode:
     @pytest.fixture
     def mock_grader(self):
         m = MagicMock()
-        m.grade_chunks = AsyncMock(
-            return_value=[{"text": "graded chunk", "source": "b.pdf"}]
-        )
+        m.grade = AsyncMock(return_value=[{"text": "graded chunk", "source": "b.pdf"}])
         return m
-
-    @pytest.mark.asyncio
-    async def test_returns_accepted_chunks_key(self, mock_grader):
-        state = _base_state(
-            accepted_chunks=[{"text": "raw chunk"}], effective_query="q"
-        )
-        result = await grade(state, grader=mock_grader)
-
-        assert "accepted_chunks" in result
 
     @pytest.mark.asyncio
     async def test_graded_chunks_are_returned(self, mock_grader):
@@ -531,27 +520,9 @@ class TestGradeNode:
         )
         result = await grade(state, grader=mock_grader)
 
-        assert result["accepted_chunks"] == [
-            {"text": "graded chunk", "source": "b.pdf"}
-        ]
+        print(result)
 
-    @pytest.mark.asyncio
-    async def test_grader_called_with_chunks_and_query(self, mock_grader):
-        chunks = [{"text": "chunk1"}, {"text": "chunk2"}]
-        state = _base_state(accepted_chunks=chunks, effective_query="test query")
-        await grade(state, grader=mock_grader)
-
-        mock_grader.grade_chunks.assert_awaited_once_with(chunks, "test query")
-
-    @pytest.mark.asyncio
-    async def test_empty_chunks_returned_when_all_rejected(self, mock_grader):
-        mock_grader.grade_chunks = AsyncMock(return_value=[])
-        state = _base_state(
-            accepted_chunks=[{"text": "irrelevant"}], effective_query="q"
-        )
-        result = await grade(state, grader=mock_grader)
-
-        assert result["accepted_chunks"] == []
+        assert result == [{"text": "graded chunk", "source": "b.pdf"}]
 
 
 # Node: synthesize

@@ -105,27 +105,27 @@ class SynthesizerAgent:
             )
 
         prompt = f"""
-        Answer the following question using only the provided context.
-        You are an Enterprise AI Assistant focused on accuracy and precision.
+Answer the following question using only the provided context.
+You are an Enterprise AI Assistant focused on accuracy and precision.
 
-        Question: {original_question}
+Question: {original_question}
 
-        Context:
-        {context}
+Context:
+{context}
 
-        Instructions:
-        1. Only use information explicitly stated in the provided context
-        2. Cite every factual claim with the source section in brackets [Section Name]
-        3. If the context is insufficient, clearly state what's missing
-        4. Be direct and concise - avoid unnecessary elaboration
-        5. If multiple sources conflict, acknowledge the discrepancy
-        6. Format numerical data clearly with units when applicable
+Instructions:
+1. Only use information explicitly stated in the provided context
+2. Cite every factual claim with the source section in brackets [Section Name]
+3. If the context is insufficient, clearly state what's missing
+4. Be direct and concise - avoid unnecessary elaboration
+5. If multiple sources conflict, acknowledge the discrepancy
+6. Format numerical data clearly with units when applicable
 
-        Answer format:
-        - Start with a direct answer to the question
-        - Provide supporting details with citations
-        - End with confidence level if information is incomplete
-        """
+Answer format:
+- Start with a direct answer to the question
+- Provide supporting details with citations
+- End with confidence level if information is incomplete
+"""
 
         response = await self.llm.complete(prompt)
         return response.text
@@ -136,20 +136,20 @@ class SynthesizerAgent:
         retrieval_history = _get(state, "retrieval_history") or []
 
         prompt = f"""
-        You are a friendly and helpful Enterprise AI Assistant.
-        Respond naturally to the user's message while maintaining professionalism.
+You are a friendly and helpful Enterprise AI Assistant.
+Respond naturally to the user's message while maintaining professionalism.
 
-        Conversation context:
-        {self._format_history(retrieval_history)}
+Conversation context:
+{self._format_history(retrieval_history)}
 
-        User message: {original_question}
+User message: {original_question}
 
-        Guidelines:
-        - Be warm but professional
-        - Keep responses concise
-        - Transition naturally to work-related topics if appropriate
-        - Don't pretend to have capabilities you don't have
-        """
+Guidelines:
+- Be warm but professional
+- Keep responses concise
+- Transition naturally to work-related topics if appropriate
+- Don't pretend to have capabilities you don't have
+"""
 
         response = await self.llm.complete(prompt)
         return response.text
@@ -157,23 +157,23 @@ class SynthesizerAgent:
     async def _synthesize_meta(self, state: Union[State, dict]) -> str:
         """Handle questions about the system's capabilities."""
         prompt = """
-        You are an Enterprise AI Assistant. Answer questions about your capabilities
-        honestly and clearly.
+You are an Enterprise AI Assistant. Answer questions about your capabilities
+honestly and clearly.
 
-        Your capabilities:
-        - Retrieve and analyze information from enterprise documents
-        - Answer factual questions with source citations
-        - Compare and analyze multiple entities or concepts
-        - Summarize documents and conversations
-        - Provide step-by-step procedural guidance
-        - Remember conversation context within a session
+Your capabilities:
+- Retrieve and analyze information from enterprise documents
+- Answer factual questions with source citations
+- Compare and analyze multiple entities or concepts
+- Summarize documents and conversations
+- Provide step-by-step procedural guidance
+- Remember conversation context within a session
 
-        Limitations:
-        - You can only access documents you've been given
-        - You cannot browse the internet or access external systems
-        - You cannot perform actions in other systems
+Limitations:
+- You can only access documents you've been given
+- You cannot browse the internet or access external systems
+- You cannot perform actions in other systems
 
-        Respond helpfully and offer to assist with document-based questions.
+Respond helpfully and offer to assist with document-based questions.
         """
 
         response = await self.llm.complete(prompt)
@@ -192,27 +192,27 @@ class SynthesizerAgent:
             )
 
         prompt = f"""
-        Compare and contrast based on the provided context.
-        Provide a structured, balanced analysis.
+Compare and contrast based on the provided context.
+Provide a structured, balanced analysis.
 
-        Question: {original_question}
+Question: {original_question}
 
-        Context:
-        {context}
+Context:
+{context}
 
-        Structure your response as:
-        1. Executive Summary (2-3 sentences)
-        2. Detailed Comparison Table (if applicable)
-           - Feature/Criterion | Entity A | Entity B
-        3. Key Similarities (with citations)
-        4. Key Differences (with citations)
-        5. Recommendation or Conclusion (if appropriate)
+Structure your response as:
+1. Executive Summary (2-3 sentences)
+2. Detailed Comparison Table (if applicable)
+   - Feature/Criterion | Entity A | Entity B
+3. Key Similarities (with citations)
+4. Key Differences (with citations)
+5. Recommendation or Conclusion (if appropriate)
 
-        Rules:
-        - Cite all claims with [Section Name]
-        - Be objective and balanced
-        - Acknowledge when data is incomplete
-        - Use specific metrics/numbers when available
+Rules:
+- Cite all claims with [Section Name]
+- Be objective and balanced
+- Acknowledge when data is incomplete
+- Use specific metrics/numbers when available
         """
 
         response = await self.llm.complete(prompt)
@@ -224,33 +224,33 @@ class SynthesizerAgent:
         context = _build_context(state)
 
         prompt = f"""
-        Provide a thorough analysis using chain-of-thought reasoning.
-        Show your analytical process clearly.
+Provide a thorough analysis using chain-of-thought reasoning.
+Show your analytical process clearly.
 
-        Question: {original_question}
+Question: {original_question}
 
-        Context:
-        {context}
+Context:
+{context}
 
-        Structure your analysis:
-        1. Key Findings (main insights from context)
-        2. Analysis
-           - Examine each relevant piece of evidence
-           - Identify patterns and relationships
-           - Consider implications and causality
-        3. Reasoning Chain
-           - Step-by-step logical progression
-           - Address counterarguments
-        4. Conclusion
-           - Synthesize findings into clear answer
-           - State confidence level
-           - Note any assumptions made
+Structure your analysis:
+1. Key Findings (main insights from context)
+2. Analysis
+   - Examine each relevant piece of evidence
+   - Identify patterns and relationships
+   - Consider implications and causality
+3. Reasoning Chain
+   - Step-by-step logical progression
+   - Address counterarguments
+4. Conclusion
+   - Synthesize findings into clear answer
+   - State confidence level
+   - Note any assumptions made
 
-        Rules:
-        - Cite evidence with [Section Name]
-        - Distinguish between facts and inferences
-        - Acknowledge uncertainty
-        - Be thorough but avoid speculation beyond evidence
+Rules:
+- Cite evidence with [Section Name]
+- Distinguish between facts and inferences
+- Acknowledge uncertainty
+- Be thorough but avoid speculation beyond evidence
         """
 
         response = await self.llm.complete(prompt)
@@ -270,26 +270,26 @@ class SynthesizerAgent:
             return await self._summarize_conversation(retrieval_history)
 
         prompt = f"""
-        Create a comprehensive yet concise summary.
+Create a comprehensive yet concise summary.
 
-        Request: {original_question}
+Request: {original_question}
 
-        Content to summarize:
-        {context}
+Content to summarize:
+{context}
 
-        Structure:
-        1. Executive Summary (2-3 sentences)
-        2. Key Points (bullet points with citations)
-        3. Supporting Details (organized by theme)
-        4. Conclusions or Next Steps
+Structure:
+1. Executive Summary (2-3 sentences)
+2. Key Points (bullet points with citations)
+3. Supporting Details (organized by theme)
+4. Conclusions or Next Steps
 
-        Rules:
-        - Preserve key facts, numbers, and dates
-        - Cite sources with [Section Name]
-        - Maintain original meaning - don't introduce new information
-        - Be hierarchical: most important information first
-        - Note any gaps in the source material
-        """
+Rules:
+- Preserve key facts, numbers, and dates
+- Cite sources with [Section Name]
+- Maintain original meaning - don't introduce new information
+- Be hierarchical: most important information first
+- Note any gaps in the source material
+"""
 
         response = await self.llm.complete(prompt)
         return response.text
@@ -302,24 +302,24 @@ class SynthesizerAgent:
         retrieval_history = _get(state, "retrieval_history") or []
 
         prompt = f"""
-        The user is asking for clarification on a previous topic.
-        Provide additional detail and explanation.
+The user is asking for clarification on a previous topic.
+Provide additional detail and explanation.
 
-        Previous context:
-        {self._format_history(retrieval_history)}
+Previous context:
+{self._format_history(retrieval_history)}
 
-        Clarification needed: {original_question}
+Clarification needed: {original_question}
 
-        Additional context:
-        {context}
+Additional context:
+{context}
 
-        Guidelines:
-        - Reference what was previously discussed
-        - Explain in more detail, using simpler terms if needed
-        - Provide examples where helpful
-        - Confirm understanding before elaborating
-        - If the clarification requires information not available, say so
-        """
+Guidelines:
+- Reference what was previously discussed
+- Explain in more detail, using simpler terms if needed
+- Provide examples where helpful
+- Confirm understanding before elaborating
+- If the clarification requires information not available, say so
+"""
 
         response = await self.llm.complete(prompt)
         return response.text
@@ -331,30 +331,30 @@ class SynthesizerAgent:
         context = _build_context(state)
 
         prompt = f"""
-        Provide clear, actionable step-by-step guidance.
+Provide clear, actionable step-by-step guidance.
 
-        Task: {original_question}
+Task: {original_question}
 
-        Context:
-        {context}
+Context:
+{context}
 
-        Structure:
-        1. Overview/Goal
-        2. Prerequisites (if any)
-        3. Step-by-Step Instructions
-           - Number each step clearly
-           - Include expected outcomes for each step
-           - Note common pitfalls or alternatives
-        4. Verification (how to confirm success)
-        5. Troubleshooting (common issues and solutions)
+Structure:
+1. Overview/Goal
+2. Prerequisites (if any)
+3. Step-by-Step Instructions
+   - Number each step clearly
+   - Include expected outcomes for each step
+   - Note common pitfalls or alternatives
+4. Verification (how to confirm success)
+5. Troubleshooting (common issues and solutions)
 
-        Rules:
-        - Be precise and unambiguous
-        - Cite sources for each major step [Section Name]
-        - Indicate if steps are sequential or can be done in parallel
-        - Include safety/security considerations if applicable
-        - If the procedure is incomplete in the context, note what's missing
-        """
+Rules:
+- Be precise and unambiguous
+- Cite sources for each major step [Section Name]
+- Indicate if steps are sequential or can be done in parallel
+- Include safety/security considerations if applicable
+- If the procedure is incomplete in the context, note what's missing
+"""
 
         response = await self.llm.complete(prompt)
         return response.text
@@ -366,16 +366,16 @@ class SynthesizerAgent:
             return "We haven't discussed anything yet in this session."
 
         prompt = f"""
-        Summarize the following conversation:
+Summarize the following conversation:
 
-        {self._format_history(history)}
+{self._format_history(history)}
 
-        Provide:
-        1. Main topics discussed
-        2. Key questions asked and answers given
-        3. Any decisions or conclusions reached
-        4. Outstanding questions or next steps
-        """
+Provide:
+1. Main topics discussed
+2. Key questions asked and answers given
+3. Any decisions or conclusions reached
+4. Outstanding questions or next steps
+"""
 
         response = await self.llm.complete(prompt)
         return response.text

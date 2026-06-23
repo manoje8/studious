@@ -93,11 +93,7 @@ async def next_sub_question(state: State) -> dict:
 
 # Grader
 async def grade(state: State, grader) -> dict:
-    graded = await grader.grade_chunks(
-        state["accepted_chunks"], state["effective_query"]
-    )
-
-    return {"accepted_chunks": graded}
+    return await grader.grade(state)
 
 
 # Synthesizer
@@ -105,7 +101,7 @@ async def synthesize(state: State, synthesizer) -> dict:
     answer = await synthesizer.synthesize(state)
 
     accepted_chunks = state.get("accepted_chunks") or []
-    sources = list({c["source"] for c in accepted_chunks if c.get("source")})
+    sources = list(set(c["source"] for c in accepted_chunks if c.get("source")))
 
     return {"final_answer": answer, "sources": sources}
 

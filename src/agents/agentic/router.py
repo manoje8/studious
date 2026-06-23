@@ -1,3 +1,6 @@
+import logfire
+
+
 class RouterAgent:
     def __init__(self, llm_client):
         self.llm = llm_client
@@ -123,12 +126,44 @@ Respond with EXACTLY this JSON format:
     "intent_signals": ["specific", "keywords", "detected"]
 }}
 """
+        with logfire.span("classify_query", prompt_length=len(prompt)) as span:
+            try:
+                response = await self.llm.complete(prompt)
+                parsed_data = self._parse_and_validate_response(response)
+                result = self._apply_fallback_strategy(result=parsed_data)
 
-        response = await self.llm.complete(prompt)
+                span.set_attributes(
+                    {
+                        "primary_category": result.get("primary_category"),
+                        "confidence_score": result.get("confidence_score"),
+                        "complexity_level": result.get("complexity_level"),
+                        "needs_hybrid_search": result["retrieval_strategy"].get(
+                            "needs_hybrid_search"
+                        ),
+                        "needs_multi_hop": result["retrieval_strategy"].get(
+                            "needs_multi_hop"
+                        ),
+                        "target_chunks": result["retrieval_strategy"].get(
+                            "target_chunks"
+                        ),
+                        "requires_confirmation": result.get(
+                            "requires_confirmation", False
+                        ),
+                    }
+                )
 
-        result = self._parse_and_validate_response(response)
+                logfire.info(
+                    "Routing decision: {category} (confidence={confidence})",
+                    category=result.get("primary_category"),
+                    confidence=result.get("confidence_score"),
+                )
 
-        return self._apply_fallback_strategy(result)
+                return result
+            except Exception as e:
+                logfire.error(
+                    f"Error in classify_query: {str(e)}, " f"Using Fallback response"
+                )
+                return self._create_fallback_response()
 
     def _build_context_prompt(self, conversation_history: list) -> str:
         """Build context-aware prompt from conversation history"""
@@ -164,19 +199,33 @@ Respond with EXACTLY this JSON format:
             ]
             for field in required_fields:
                 if field not in result:
+                    logfire.warn(
+                        "Missing required field '{field}' in LLM response, using fallback",
+                        field=field,
+                    )
                     result = self._create_fallback_response()
                     break
 
             if not 0 <= result.get("confidence_score", 0) <= 1:
+                logfire.warn(
+                    "Confidence score out of bounds: {score}, clamping to fallback_confidence",
+                    score=result.get("confidence_score"),
+                )
                 result["confidence_score"] = self.config.get("fallback_confidence", 0.7)
 
             return result
 
-        except (AttributeError, KeyError, TypeError):
+        except (AttributeError, KeyError, TypeError) as e:
+            logfire.error(
+                "Failed to parse LLM response: {error}",
+                error=str(e),
+            )
             return self._create_fallback_response()
 
     def _create_fallback_response(self) -> dict:
         """Create a safe fallback response"""
+
+        logfire.warn("Using fallback classification response")
 
         return {
             "primary_category": self.config["fallback_category"],
@@ -205,18 +254,24 @@ Respond with EXACTLY this JSON format:
     def _apply_fallback_strategy(self, result: dict) -> dict:
         """Apply fallback strategies based on confidence and category"""
 
-        # If confidence is low, add uncertainty handling
         if result.get("confidence_score", 0) < 0.7:
+            logfire.info(
+                "Low confidence ({score}) for category '{category}', requiring confirmation",
+                score=result.get("confidence_score"),
+                category=result.get("primary_category"),
+            )
             result["requires_confirmation"] = True
             result["fallback_categories"] = ["factual", "analytical"]
 
-        # Ensure procedural questions get high-quality retrieval
         if result["primary_category"] == "procedural":
+            logfire.info(
+                "Procedural query detected — upgrading retrieval depth/chunking"
+            )
             result["retrieval_strategy"]["chunking_strategy"] = "large"
             result["retrieval_strategy"]["max_retrieval_depth"] = 3
 
-        # Chitchat should never retrieve
         if result["primary_category"] == "chitchat":
+            logfire.info("Chitchat detected — disabling retrieval")
             result["retrieval_strategy"]["target_chunks"] = 0
             result["requires_citation"] = False
             result["requires_source_attribution"] = False
