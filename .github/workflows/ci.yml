@@ -84,8 +84,7 @@ jobs:
             tiktoken \
             google-cloud-storage \
             flashrank \
-            langchain \
-            langgraph
+            langchain-text-splitters
 
       - name: Install project in editable mode
         run: pip install -e .

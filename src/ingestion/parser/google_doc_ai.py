@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union, Optional
 
 import logfire
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from google.cloud import documentai
 from pypdf import PdfReader, PdfWriter
 
@@ -152,20 +153,30 @@ class GoogleDocAI(Parser):
         return text
 
     def _process_with_doc_ai(self, content: bytes, ext: str) -> str:
-        ext_key = ext.lower().lstrip(".")
-        mime_type = GOOGLE_MIME_TYPES.get(ext_key)
+        try:
+            ext_key = ext.lower().lstrip(".")
+            mime_type = GOOGLE_MIME_TYPES.get(ext_key)
 
-        if not mime_type:
-            raise ValueError(f"No MIME type mapping for extension: {ext}")
+            if not mime_type:
+                raise ValueError(f"No MIME type mapping for extension: {ext}")
 
-        processor_name = self.client.processor_path(
-            config.PROJECT_ID,
-            config.GCP_DOC_AI_LOCATION,
-            config.GCP_DOC_AI_PROCESSOR_ID,
-        )
+            processor_name = self.client.processor_path(
+                config.PROJECT_ID,
+                config.GCP_DOC_AI_LOCATION,
+                config.GCP_DOC_AI_PROCESSOR_ID,
+            )
 
-        raw_doc = documentai.RawDocument(content=content, mime_type=mime_type)
-        request = documentai.ProcessRequest(name=processor_name, raw_document=raw_doc)
+            raw_doc = documentai.RawDocument(content=content, mime_type=mime_type)
+            request = documentai.ProcessRequest(
+                name=processor_name, raw_document=raw_doc
+            )
 
-        result = self.client.process_document(request=request)
-        return result.document.text
+            result = self.client.process_document(request=request)
+            return result.document.text
+
+        except ResourceExhausted:
+            logfire.error("Doc AI quota exhausted")
+            raise
+        except ServiceUnavailable as e:
+            logfire.warning(f"Doc AI transiently unavailable: {e}")
+            raise

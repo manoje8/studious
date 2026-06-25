@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     await pool.wait()
 
     # llm_client = GeminiClient()
-    llm_client = GroqClient()
+    llm_client = GroqClient(timeout_seconds=30, max_retries=2)
 
     # episodic = EpisodicMemoryManager(llm_client=llm_client, pool=pool)
     # await episodic.setup()

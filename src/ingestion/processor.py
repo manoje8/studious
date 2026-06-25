@@ -65,9 +65,9 @@ class Processor:
     def _get_parser(self, parser_type: str):
         parser_name = parser_type.strip().lower()
 
-        if parser_name == ParseMethod.GOOGLE_DOC_AI.value:
+        if parser_name == ParseMethod.GOOGLE_DOC_AI:
             return GoogleDocAI()
-        elif parser_name == ParseMethod.DOCLING.value:
+        elif parser_name == ParseMethod.DOCLING:
             return DoclingParser()
         else:
             raise ValueError(f"Unsupported Parser type: {parser_type}")
@@ -136,7 +136,7 @@ class Processor:
             f"Starting chunking with strategy: {chunking_strategy} - {parse_method}"
         )
 
-        chunking_config = ChunkingConfig(type=chunking_strategy)
+        chunking_config = ChunkingConfig(type=chunking_strategy, size=512, overlap=64)
 
         chunker = create_chunker(chunking_config)
         chunks = chunker.chunk(content_list)
@@ -168,7 +168,6 @@ class Processor:
         ext = file_path.suffix.lower()
 
         cache_key = self._generate_cache_key(file_path, parse_method.value)
-
         cache_result = self._get_cached_result(cache_key, file_path, parse_method.value)
 
         if cache_result is not None:
@@ -177,7 +176,7 @@ class Processor:
             return cache_result, doc_id
 
         try:
-            doc_parser = self._get_parser(parser_type=parse_method.value)
+            doc_parser = self._get_parser(parser_type=parse_method)
 
             if not doc_parser.check_installation():
                 raise ImportError("Required package is not installed")

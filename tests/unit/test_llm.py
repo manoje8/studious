@@ -10,7 +10,7 @@ import json
 import pytest
 from unittest.mock import MagicMock, patch
 
-from src.llm.base import LLMResponse, BaseLLM
+from src.llm.base import LLMResponse, BaseLLM, LLMContentError
 from src.llm.gemini import GeminiClient
 
 
@@ -23,7 +23,7 @@ class TestLLMResponse:
 
     def test_str_returns_raw_text(self):
         resp = LLMResponse("some text")
-        assert str(resp) == "some text"
+        assert str(resp.text) == "some text"
 
     def test_parsed_json_plain_json(self):
         payload = {"key": "value", "number": 42}
@@ -73,7 +73,18 @@ class TestBaseLLMInterface:
 
     def test_concrete_subclass_works(self):
         class FakeLLM(BaseLLM):
-            async def complete(self, prompt: str, max_token: int = 1024) -> LLMResponse:
+            async def _complete_impl(
+                self, prompt: str, max_token: int, **kwargs
+            ) -> LLMResponse:
+                return LLMResponse("ok")
+
+            @property
+            def model_name(self) -> str:
+                pass
+
+            async def complete(
+                self, prompt: str, max_token: int = 1024, **kwargs
+            ) -> LLMResponse:
                 return LLMResponse("ok")
 
         llm = FakeLLM()
@@ -138,7 +149,7 @@ class TestGeminiClient:
         mock_response.candidates = []
         mock_genai["client"].models.generate_content.return_value = mock_response
 
-        with pytest.raises(RuntimeError, match="Gemini returned no content"):
+        with pytest.raises(LLMContentError, match="Gemini returned no content"):
             await gemini.complete("What?")
 
     @pytest.mark.asyncio
@@ -152,7 +163,7 @@ class TestGeminiClient:
         mock_response.candidates = [mock_candidate]
         mock_genai["client"].models.generate_content.return_value = mock_response
 
-        with pytest.raises(RuntimeError, match="SAFETY"):
+        with pytest.raises(LLMContentError, match="SAFETY"):
             await gemini.complete("unsafe prompt")
 
     @pytest.mark.asyncio

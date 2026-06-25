@@ -28,6 +28,7 @@ psycopg-pool
 
 langchain
 langgraph
+langchain-text-splitters
 langgraph-checkpoint-postgres
 langchain-google-vertexai
 langchain-groq
