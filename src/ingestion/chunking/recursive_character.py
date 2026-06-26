@@ -34,11 +34,13 @@ class RecursiveCharacterChunker(Chunker):
     def chunk(
         self,
         text: str,
-        separator: list[str] | None = None,
         **kwargs,
     ) -> list[Chunk]:
         doc_id: str = kwargs.get("doc_id", "")
         source_file: str = kwargs.get("source_file", "")
+        separators: list[str] = kwargs.get(
+            "separator", ["```", "| ---", "\n\n", "\n", " "]
+        )
 
         if not text or not text.strip():
             return []
@@ -47,13 +49,10 @@ class RecursiveCharacterChunker(Chunker):
             "chunk_size": max(int(self.size), 1),
             "chunk_overlap": max(int(self.overlap), 0),
             "length_function": lambda s: len(self.tokenizer.encode(s)),
+            "separators": list(separators),
         }
 
-        if separator is not None:
-            splitter_kwargs["separators"] = list(separator)
-
         splitter = RecursiveCharacterTextSplitter(**splitter_kwargs)
-
         pieces = splitter.split_text(text)
 
         results: list[Chunk] = []

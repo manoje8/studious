@@ -27,7 +27,7 @@ class EmbeddingService:
     def __init__(
         self,
         model_name: str = "text-embedding-004",
-        dimensions: int = 1536,
+        dimensions: int = 1356,
         batch_size: int = 100,
         max_retries: int = 3,
         retry_delay: float = 1.0,

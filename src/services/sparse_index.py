@@ -1,6 +1,11 @@
+import pickle
+
 import logfire
 from rank_bm25 import BM25Okapi
 import numpy as np
+from pathlib import Path
+
+BM2_CACHE_PATH = "/tmp/bm25_index.pkl"
 
 
 class SparseSearchIndex:
@@ -9,6 +14,28 @@ class SparseSearchIndex:
     def __init__(self):
         self.index: BM25Okapi | None = None
         self.chunks: list[dict] = []
+
+    def save(self, path: Path = BM2_CACHE_PATH):
+        logfire.info(f"Saving BM25 index to {path}")
+        with open(path, "wb") as f:
+            pickle.dump(
+                {
+                    "index": self.index,
+                    "chunks": self.chunks,
+                },
+                f,
+            )
+
+    def load(self, path: Path = BM2_CACHE_PATH) -> bool:
+        if not path.exists():
+            return False
+        logfire.info(f"Loading BM25 index from {path}")
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+
+        self.index = data["index"]
+        self.chunks = data["chunks"]
+        return True
 
     def build(self, chunks: list[dict]):
         """Build BM25 index from chunk texts."""
@@ -27,8 +54,9 @@ class SparseSearchIndex:
         logfire.info(f"BM25 index build with {len(chunks)} chunks")
 
     def search(self, query: str, top_k: int = 10) -> list[dict]:
-        if not self.index:
-            raise RuntimeError("BM25 index not built. Call build() first.")
+        if self.index is None:
+            logfire.warning("BM25 index not built yet; returning empty sparse results")
+            return []
 
         tokenized_query = query.lower().split()
         score = self.index.get_scores(tokenized_query)

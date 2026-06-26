@@ -19,9 +19,7 @@ class FixedWindow(Chunker):
         self.overlap = overlap
         self.token_len_fn = token_len_fn or (lambda s: len(s.split()))
 
-    def chunk(
-        self, text: str, transform: Callable[[str], str] | None = None, **kwargs
-    ) -> List[Chunk]:
+    def chunk(self, text: str, **kwargs) -> List[Chunk]:
         doc_id: str = kwargs.get("doc_id", "")
         source_file: str = kwargs.get("source_file", "")
 

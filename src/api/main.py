@@ -1,5 +1,8 @@
+import asyncio
+import contextlib
 import sys
 from contextlib import asynccontextmanager
+from typing import Callable, Awaitable
 
 import logfire
 import uvicorn
@@ -46,63 +49,89 @@ async def lifespan(app: FastAPI):
         kwargs={"autocommit": True, "row_factory": dict_row},
     )
 
-    await pool.open()
-    await pool.wait()
+    closers: list[tuple[str, Callable[[], Awaitable[None]]]] = []
+    rebuild_task: asyncio.Task | None = None
 
-    # llm_client = GeminiClient()
-    llm_client = GroqClient(timeout_seconds=30, max_retries=2)
+    try:
+        await pool.open()
+        await asyncio.wait_for(pool.wait(), timeout=10)
+        closers.append(("postgres pool", pool.close))
 
-    # episodic = EpisodicMemoryManager(llm_client=llm_client, pool=pool)
-    # await episodic.setup()
-    short_term = ShortTermMemoryManager(config.REDIS_URL)
+        # llm_client = GeminiClient()
+        llm_client = GroqClient(timeout_seconds=30, max_retries=2)
 
-    embedding_service = EmbeddingService(
-        model_name=config.EMBEDDING_MODEL_NAME,
-        dimensions=config.EMBEDDING_DIMENSIONS,
-        batch_size=config.EMBEDDING_BATCH_SIZE,
-    )
-    storage_service = QdrantStorageService(
-        url=config.QDRANT_CLUSTER_ENDPOINT,
-        vector_size=embedding_service.vector_size,
-        collection_name=config.QDRANT_COLLECTION_NAME,
-    )
-    sparse_index = SparseSearchIndex()
+        # episodic = EpisodicMemoryManager(llm_client=llm_client, pool=pool)
+        # await episodic.setup()
+        short_term = ShortTermMemoryManager(config.REDIS_URL)
+        if hasattr(short_term, "aclose"):
+            closers.append(("redis", short_term.aclose))
 
-    logfire.info("Rebuilding sparse index...")
-    await bootstrap_sparse_index(storage_service, sparse_index)
+        embedding_service = EmbeddingService(
+            model_name=config.EMBEDDING_MODEL_NAME,
+            dimensions=config.EMBEDDING_DIMENSIONS,
+            batch_size=config.EMBEDDING_BATCH_SIZE,
+        )
+        storage_service = QdrantStorageService(
+            url=config.QDRANT_CLUSTER_ENDPOINT,
+            vector_size=embedding_service.vector_size,
+            collection_name=config.QDRANT_COLLECTION_NAME,
+        )
+        closers.append(("qdrant client", storage_service.client.close))
 
-    hybrid_search = HybridSearch(
-        storage_service=storage_service,
-        embedding_service=embedding_service,
-        sparse_index=sparse_index,
-    )
-    reranker = Reranker()
-    query_expander = QueryExpander(llm_client)
-    retrieval_agent = RetrievalAgent(
-        llm_client=llm_client,
-        hybrid_search=hybrid_search,
-        reranker=reranker,
-        query_expand=query_expander,
-    )
+        sparse_index = SparseSearchIndex()
 
-    graph = await compile_graph_with_postgres(
-        pool=pool,
-        short_term=short_term,
-        rewriter=QueryRewriter(llm_client),
-        router=RouterAgent(llm_client),
-        planner=PlannerAgent(llm_client),
-        retrieval_agent=retrieval_agent,
-        grader=GraderAgent(llm_client),
-        synthesizer=SynthesizerAgent(llm_client),
-    )
+        hybrid_search = HybridSearch(
+            storage_service=storage_service,
+            embedding_service=embedding_service,
+            sparse_index=sparse_index,
+        )
+        reranker = Reranker()
+        query_expander = QueryExpander(llm_client)
+        retrieval_agent = RetrievalAgent(
+            llm_client=llm_client,
+            hybrid_search=hybrid_search,
+            reranker=reranker,
+            query_expand=query_expander,
+        )
 
-    pipeline = GraphPipeline(graph, short_term_memory=short_term)
-    app.state.pipeline = pipeline
-    app.state.pool = pool
+        graph = await compile_graph_with_postgres(
+            pool=pool,
+            short_term=short_term,
+            rewriter=QueryRewriter(llm_client),
+            router=RouterAgent(llm_client),
+            planner=PlannerAgent(llm_client),
+            retrieval_agent=retrieval_agent,
+            grader=GraderAgent(llm_client),
+            synthesizer=SynthesizerAgent(llm_client),
+        )
 
-    yield
-    app.state.pipeline = None
-    await pool.close()
+        pipeline = GraphPipeline(graph, short_term_memory=short_term)
+        app.state.pipeline = pipeline
+        app.state.pool = pool
+
+        rebuild_task = asyncio.create_task(
+            bootstrap_sparse_index(storage_service, sparse_index)
+        )
+    except Exception:
+        logfire.error("Startup failed; rolling back partially-initialized resources")
+        for name, close in reversed(closers):
+            with contextlib.suppress(Exception):
+                await close()
+        raise
+
+    try:
+        yield
+    finally:
+        app.state.pipeline = None
+        if rebuild_task is not None:
+            rebuild_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await rebuild_task
+        for name, close in reversed(closers):
+            try:
+                await close()
+            except Exception:
+                logfire.error(f"Error closing {name} during shutdown")
 
 
 def create_apps():

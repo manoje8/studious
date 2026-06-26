@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from typing import Any, List
 
 from src.ingestion.chunking.chunk import Chunk
@@ -13,7 +12,5 @@ class Chunker(ABC):
         """Create a chunker instance."""
 
     @abstractmethod
-    def chunk(
-        self, text: str, transform: Callable[[str], str] | None = None
-    ) -> List[Chunk]:
+    def chunk(self, text: str, **kwargs) -> List[Chunk]:
         """hunk method definition."""

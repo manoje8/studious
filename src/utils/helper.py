@@ -1,3 +1,4 @@
+import asyncio
 import os.path
 import sys
 from typing import List, Any, Tuple, Dict
@@ -23,6 +24,7 @@ def check_env():
 
 
 async def bootstrap_sparse_index(storage_service, sparse_index):
+    logfire.info("Rebuilding sparse index...")
     all_chunks = await storage_service.scroll_all_chunks()
 
     if not all_chunks:
@@ -30,7 +32,7 @@ async def bootstrap_sparse_index(storage_service, sparse_index):
         return
 
     logfire.info(f"Building BM25 index with {len(all_chunks)} chunks...")
-    sparse_index.build(all_chunks)
+    await asyncio.to_thread(sparse_index.build, all_chunks)
 
 
 def separate_content(
