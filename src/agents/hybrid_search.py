@@ -1,3 +1,4 @@
+import asyncio
 import logfire
 
 from src.ingestion.embedding import EmbeddingService
@@ -47,27 +48,57 @@ class HybridSearch:
 
         return merged
 
+    async def _search_one(self, query: str, doc_id_filter: str | None = None):
+        query_vector = await self.embedding_service.embed_single(query)
+        dense_result = await self.storage_service.search(
+            query_vector=query_vector,
+            top_k=self.dense_top_k,
+            doc_id_filter=doc_id_filter,
+        )
+        sparse_result = self.sparse_index.search(query, top_k=self.sparse_top_k)
+
+        return dense_result, sparse_result
+
     async def search(
-        self, queries: list[str], doc_id_filter: str | None = None
+        self, queries: list[str], doc_id_filter: str | None = None, timeout: float = 8.0
     ) -> list[dict]:
-        all_dense_result = []
-        all_sparse_result = []
+        if not isinstance(queries, list) or not all(
+            isinstance(q, str) for q in queries
+        ):
+            msg = f"queries must be list[str], got {type(queries)!r}"
+            logfire.error(msg)
+            raise ValueError(msg)
 
-        for query in queries:
-            query_vector = await self.embedding_service.embed_single(query)
-            dense_result = await self.storage_service.search(
-                query_vector=query_vector,
-                top_k=self.dense_top_k,
-                doc_id_filter=doc_id_filter,
+        async def _run():
+            search_one = [self._search_one(query, doc_id_filter) for query in queries]
+            results = await asyncio.gather(*search_one, return_exceptions=True)
+            all_dense, all_sparse = [], []
+
+            for query, result in zip(queries, results):
+                if isinstance(result, Exception):
+                    logfire.error(
+                        f"Search failed for the query variant {query!r}: {result}"
+                    )
+                    continue
+                dense_result, sparse_result = result
+                all_dense.append(dense_result)
+                all_sparse.append(sparse_result)
+
+            return all_dense, all_sparse
+
+        try:
+            all_dense, all_sparse = await asyncio.wait_for(_run(), timeout=timeout)
+        except asyncio.TimeoutError:
+            logfire.error(
+                f"Hybrid search timeout after {timeout}s ({len(queries)} variants)"
             )
+            return []
 
-            all_dense_result.append(dense_result)
+        if not all_dense or not all_sparse:
+            return []
 
-            sparse_result = self.sparse_index.search(query, top_k=self.sparse_top_k)
-            all_sparse_result.append(sparse_result)
-
-        dense_merged = self._reciprocal_rank_fusion(all_dense_result)
-        sparse_merged = self._reciprocal_rank_fusion(all_sparse_result)
+        dense_merged = self._reciprocal_rank_fusion(all_dense) if all_sparse else []
+        sparse_merged = self._reciprocal_rank_fusion(all_sparse) if all_sparse else []
         final_merged = self._reciprocal_rank_fusion([dense_merged, sparse_merged])
 
         logfire.info(

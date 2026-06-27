@@ -6,6 +6,9 @@ from typing import List, Any, Tuple, Dict
 import logfire
 from ascii_colors import ASCIIColors
 
+from src.services.qdrant import QdrantStorageService
+from src.services.sparse_index import SparseSearchIndex
+
 
 def check_env():
     env_path = ".env"
@@ -23,8 +26,22 @@ def check_env():
     return True
 
 
-async def bootstrap_sparse_index(storage_service, sparse_index):
-    logfire.info("Rebuilding sparse index...")
+async def bootstrap_sparse_index(
+    storage_service: QdrantStorageService, sparse_index: SparseSearchIndex
+):
+    current_count = await storage_service.chunk_count()
+
+    if sparse_index.load():
+        if len(sparse_index.chunks) == current_count:
+            logfire.info(
+                f"Loaded cache BM2 index ({current_count} chunks), skipped rebuild"
+            )
+            return
+        logfire.info(
+            f"Cache index stale ({len(sparse_index.chunks)} vs {current_count} chunks), rebuilding"
+        )
+
+    logfire.info("Rebuilding sparse index from Qdrant...")
     all_chunks = await storage_service.scroll_all_chunks()
 
     if not all_chunks:
@@ -33,6 +50,8 @@ async def bootstrap_sparse_index(storage_service, sparse_index):
 
     logfire.info(f"Building BM25 index with {len(all_chunks)} chunks...")
     await asyncio.to_thread(sparse_index.build, all_chunks)
+    await asyncio.to_thread(sparse_index.save)
+    logfire.info("BM25 index cached to disk")
 
 
 def separate_content(

@@ -34,13 +34,9 @@ from src.services.sparse_index import SparseSearchIndex
 from src.utils.config import config
 from src.utils.helper import check_env, bootstrap_sparse_index
 
-pipeline: GraphPipeline | None = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global pipeline
-
     pool = AsyncConnectionPool(
         conninfo=config.POSTGRES_CONN_STRING,
         min_size=2,
@@ -173,9 +169,7 @@ def main():
     freeze_support()
 
     app = create_apps()
-
     unicorn_config = {"app": app, "host": config.HOST, "port": config.PORT}
-
     uvicorn.run(**unicorn_config)
 
 

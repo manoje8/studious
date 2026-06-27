@@ -137,6 +137,10 @@ class QdrantStorageService:
             for r in result.points
         ]
 
+    async def chunk_count(self) -> int:
+        current_count = await self.client.count(collection_name=self.collection_name)
+        return current_count.count
+
     async def scroll_all_chunks(self) -> list[dict]:
         """Scroll through all chunks in Qdrant and return them as a list of dicts."""
 

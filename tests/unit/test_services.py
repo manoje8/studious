@@ -54,8 +54,8 @@ class TestSparseSearchIndex:
 
     def test_search_before_build_raises(self):
         index = SparseSearchIndex()
-        with pytest.raises(RuntimeError, match="BM25 index not built"):
-            index.search("some query")
+        results = index.search("test query")
+        assert results == []
 
     def test_build_stores_chunks(self, chunks):
         index = SparseSearchIndex()

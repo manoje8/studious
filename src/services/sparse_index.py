@@ -5,7 +5,7 @@ from rank_bm25 import BM25Okapi
 import numpy as np
 from pathlib import Path
 
-BM2_CACHE_PATH = "/tmp/bm25_index.pkl"
+BM25_CACHE_PATH = ".cache/sparse/bm25_index.pkl"
 
 
 class SparseSearchIndex:
@@ -15,7 +15,9 @@ class SparseSearchIndex:
         self.index: BM25Okapi | None = None
         self.chunks: list[dict] = []
 
-    def save(self, path: Path = BM2_CACHE_PATH):
+    def save(self, path: Path = BM25_CACHE_PATH):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         logfire.info(f"Saving BM25 index to {path}")
         with open(path, "wb") as f:
             pickle.dump(
@@ -26,7 +28,9 @@ class SparseSearchIndex:
                 f,
             )
 
-    def load(self, path: Path = BM2_CACHE_PATH) -> bool:
+    def load(self, path: Path = BM25_CACHE_PATH) -> bool:
+        path = Path(path)
+
         if not path.exists():
             return False
         logfire.info(f"Loading BM25 index from {path}")

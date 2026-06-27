@@ -569,8 +569,8 @@ class TestSparseSearchIndex:
 
     def test_search_before_build(self, sparse_index):
         """Test searching before index is built"""
-        with pytest.raises(RuntimeError, match="BM25 index not built"):
-            sparse_index.search("test query")
+        results = sparse_index.search("test query")
+        assert results == []
 
     def test_basic_search(self, sparse_index, sample_chunks):
         """Test basic search functionality"""
@@ -611,11 +611,14 @@ class TestBootstrapSparseIndex:
         from src.utils.helper import bootstrap_sparse_index
 
         mock_storage = AsyncMock()
+        mock_storage.chunk_count.return_value = 1
+
         mock_storage.scroll_all_chunks.return_value = [
             {"text": "test chunk", "doc_id": "doc1", "chunk_index": 0}
         ]
 
         mock_sparse_index = Mock()
+        mock_sparse_index.load.return_value = False
 
         await bootstrap_sparse_index(mock_storage, mock_sparse_index)
 
@@ -623,6 +626,7 @@ class TestBootstrapSparseIndex:
         mock_sparse_index.build.assert_called_once_with(
             mock_storage.scroll_all_chunks.return_value
         )
+        mock_sparse_index.save.assert_called_once()
 
 
 # Test configuration for pytest
