@@ -45,6 +45,7 @@ class Config:
 
     VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", 1356))
     MAX_RETRIEVAL_ROUND = int(os.getenv("MAX_RETRIEVAL_ROUND", 1))
+    MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", 100_000))
 
     CACHE_DIR = Path(".cache/doc_parser")
     CACHE_MANIFEST = CACHE_DIR / "manifest.json"

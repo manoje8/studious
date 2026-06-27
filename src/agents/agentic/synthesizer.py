@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+import re
 from typing import Union
+import logfire
 
 from src.agents.agent_model import AgentState
 from src.agents.graph.state import State
+from src.utils.config import config
+
+_NO_CONTEXT_MSG = (
+    "I could not find sufficient information in the documents "
+    "to answer your question. Please try rephrasing or "
+    "providing more context."
+)
 
 
 def _get(state: Union[AgentState, dict], key: str, attr: str | None = None):
@@ -14,17 +23,49 @@ def _get(state: Union[AgentState, dict], key: str, attr: str | None = None):
     return getattr(state, attr or key, None)
 
 
-def _build_context(state: Union[AgentState, dict]) -> str:
-    """Build context string regardless of state type."""
+def _build_context(state: Union[AgentState, dict], max_chars: int | None = None) -> str:
+    """Build context string with token budget guard.
+
+    Chunks are added in order until the character budget is reached.
+    Truncation is chunk-aware: the last chunk that would exceed the
+    budget is dropped entirely rather than being cut mid-text.
+    """
+
+    max_chars = max_chars or config.MAX_CONTEXT_CHARS
 
     if isinstance(state, AgentState):
-        return state.all_retrieved_context
+        context = state.all_retrieved_context
+        if len(context) > max_chars:
+            logfire.warning(
+                f"Context truncated from {len(context)} to {max_chars} chars (AgentState)"
+            )
+            context = context[:max_chars]
+        return context
 
     chunks = state.get("accepted_chunks") or []
-    return "\n\n---\n\n".join(
-        f"[Source: {c.get('source', 'unknown')} | Section: {c.get('section', 'unknown')}]\n{c.get('text', '')}"
-        for c in chunks
-    )
+
+    parts: list[str] = []
+    current_len = 0
+    separator = "\n\n---\n\n"
+
+    for c in chunks:
+        part = (
+            f"[Source: {c.get('source', 'unknown')} | "
+            f"Section: {c.get('section', 'unknown')}]\n"
+            f"{c.get('text', '')}"
+        )
+        addition = (len(separator) + len(part)) if parts else len(part)
+
+        if current_len + addition > max_chars:
+            logfire.warning(
+                f"Context budget reached: using {len(parts)} of {len(chunks)} chunks ({current_len} chars)"
+            )
+            break
+
+        parts.append(part)
+        current_len += addition
+
+    return separator.join(parts)
 
 
 class SynthesizerAgent:
@@ -93,16 +134,12 @@ class SynthesizerAgent:
 
     async def _synthesize_factual(self, state: Union[State, dict]) -> str:
         """Synthesize factual answers with strict source attribution."""
+        fallback = self._require_context(state)
+        if fallback:
+            return fallback
+
         original_question = self._get_question(state)
         context = _build_context(state)
-        accepted_chunks = _get(state, "accepted_chunks") or []
-
-        if not accepted_chunks:
-            return (
-                "I could not find sufficient information in the documents "
-                "to answer your question. Please try rephrasing or "
-                "providing more context."
-            )
 
         prompt = f"""
 Answer the following question using only the provided context.
@@ -128,7 +165,7 @@ Answer format:
 """
 
         response = await self.llm.complete(prompt)
-        return response.text
+        return self._ensure_citations(response.text, state)
 
     async def _synthesize_chitchat(self, state: Union[State, dict]) -> str:
         """Handle casual conversation with friendly tone."""
@@ -181,6 +218,10 @@ Respond helpfully and offer to assist with document-based questions.
 
     async def _synthesize_comparative(self, state: Union[State, dict]) -> str:
         """Synthesize comparative analysis with structured comparison."""
+        fallback = self._require_context(state)
+        if fallback:
+            return fallback
+
         original_question = self._get_question(state)
         context = _build_context(state)
         accepted_chunks = _get(state, "accepted_chunks") or []
@@ -216,10 +257,14 @@ Rules:
         """
 
         response = await self.llm.complete(prompt)
-        return response.text
+        return self._ensure_citations(response.text, state)
 
     async def _synthesize_analytical(self, state: Union[State, dict]) -> str:
         """Synthesize analytical answers with reasoning chains."""
+        fallback = self._require_context(state)
+        if fallback:
+            return fallback
+
         original_question = self._get_question(state)
         context = _build_context(state)
 
@@ -254,10 +299,13 @@ Rules:
         """
 
         response = await self.llm.complete(prompt)
-        return response.text
+        return self._ensure_citations(response.text, state)
 
     async def _synthesize_summarization(self, state: Union[State, dict]) -> str:
         """Synthesize summaries with hierarchical structure."""
+        fallback = self._require_context(state)
+        if fallback:
+            return fallback
 
         original_question = self._get_question(state)
         context = _build_context(state)
@@ -292,10 +340,13 @@ Rules:
 """
 
         response = await self.llm.complete(prompt)
-        return response.text
+        return self._ensure_citations(response.text, state)
 
     async def _synthesize_clarification(self, state: Union[State, dict]) -> str:
         """Handle clarification requests by providing more detail."""
+        fallback = self._require_context(state)
+        if fallback:
+            return fallback
 
         original_question = self._get_question(state)
         context = _build_context(state)
@@ -322,10 +373,13 @@ Guidelines:
 """
 
         response = await self.llm.complete(prompt)
-        return response.text
+        return self._ensure_citations(response.text, state)
 
     async def _synthesize_procedural(self, state: Union[State, dict]) -> str:
         """Synthesize step-by-step procedural guidance."""
+        fallback = self._require_context(state)
+        if fallback:
+            return fallback
 
         original_question = self._get_question(state)
         context = _build_context(state)
@@ -357,7 +411,7 @@ Rules:
 """
 
         response = await self.llm.complete(prompt)
-        return response.text
+        return self._ensure_citations(response.text, state)
 
     async def _summarize_conversation(self, history: list) -> str:
         """Summarize the conversation history."""
@@ -379,6 +433,30 @@ Provide:
 
         response = await self.llm.complete(prompt)
         return response.text
+
+    def _require_context(self, state: Union[State, dict]) -> str | None:
+        """Return a fallback message if no accepted chunks exist, else None."""
+        chunks = _get(state, "accepted_chunks") or []
+        if not chunks:
+            return _NO_CONTEXT_MSG
+        return None
+
+    def _ensure_citations(self, response_text: str, state: Union[State, dict]) -> str:
+        if re.search(r"\[.+?\]", response_text):
+            return response_text
+
+        chunks = _get(state, "accepted_chunks") or []
+        if not chunks:
+            return response_text
+
+        sections = list(
+            dict.fromkeys(
+                f"{c.get('source', 'unknown')} — {c.get('section', 'unknown')}"
+                for c in chunks
+            )
+        )
+        footer = "\n\n---\n**Sources Used:**\n" + "\n".join(f"- {s}" for s in sections)
+        return response_text + footer
 
     def _get_question(self, state: Union[State, dict]) -> str:
         """Extract the question from state regardless of type."""
