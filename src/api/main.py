@@ -26,7 +26,7 @@ from src.api.routers.document_routes import create_document_routes
 from src.api.routers.query_router import create_query_routes
 from src.ingestion.embedding import EmbeddingService
 
-# from src.llm.gemini import GeminiClient
+from src.llm.gemini import GeminiClient
 from src.llm.groq import GroqClient
 from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
@@ -53,8 +53,8 @@ async def lifespan(app: FastAPI):
         await asyncio.wait_for(pool.wait(), timeout=10)
         closers.append(("postgres pool", pool.close))
 
-        # llm_client = GeminiClient()
-        llm_client = GroqClient(timeout_seconds=30, max_retries=2)
+        gemini_client = GeminiClient(timeout_seconds=30, max_retries=2)
+        groq_client = GroqClient(timeout_seconds=30, max_retries=2)
 
         # episodic = EpisodicMemoryManager(llm_client=llm_client, pool=pool)
         # await episodic.setup()
@@ -82,9 +82,9 @@ async def lifespan(app: FastAPI):
             sparse_index=sparse_index,
         )
         reranker = Reranker()
-        query_expander = QueryExpander(llm_client)
+        query_expander = QueryExpander(gemini_client)
         retrieval_agent = RetrievalAgent(
-            llm_client=llm_client,
+            llm_client=groq_client,
             hybrid_search=hybrid_search,
             reranker=reranker,
             query_expand=query_expander,
@@ -93,12 +93,12 @@ async def lifespan(app: FastAPI):
         graph = await compile_graph_with_postgres(
             pool=pool,
             short_term=short_term,
-            rewriter=QueryRewriter(llm_client),
-            router=RouterAgent(llm_client),
-            planner=PlannerAgent(llm_client),
+            rewriter=QueryRewriter(gemini_client),
+            router=RouterAgent(groq_client),
+            planner=PlannerAgent(gemini_client),
             retrieval_agent=retrieval_agent,
-            grader=GraderAgent(llm_client),
-            synthesizer=SynthesizerAgent(llm_client),
+            grader=GraderAgent(groq_client),
+            synthesizer=SynthesizerAgent(groq_client),
         )
 
         pipeline = GraphPipeline(graph, short_term_memory=short_term)

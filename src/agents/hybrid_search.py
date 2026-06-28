@@ -21,7 +21,7 @@ class HybridSearch:
         self.dense_top_k = dense_top_k
         self.sparse_top_k = sparse_top_k
 
-    def _reciprocal_rank_fusion(self, result_lists: list[dict], k: int = 10):
+    def _reciprocal_rank_fusion(self, result_lists: list, k: int = 10):
         """Merge multiple ranked result lists using a compound doc_id:chunk_index key."""
 
         rrf_scores: dict[str, float] = {}
@@ -69,6 +69,9 @@ class HybridSearch:
             logfire.error(msg)
             raise ValueError(msg)
 
+        if len(self.sparse_index.chunks) <= self.dense_top_k:
+            queries = queries[:1]
+
         async def _run():
             search_one = [self._search_one(query, doc_id_filter) for query in queries]
             results = await asyncio.gather(*search_one, return_exceptions=True)
@@ -98,7 +101,7 @@ class HybridSearch:
             return []
 
         dense_merged = self._reciprocal_rank_fusion(all_dense) if all_sparse else []
-        sparse_merged = self._reciprocal_rank_fusion(all_sparse) if all_sparse else []
+        sparse_merged = self._reciprocal_rank_fusion(all_sparse) if all_dense else []
         final_merged = self._reciprocal_rank_fusion([dense_merged, sparse_merged])
 
         logfire.info(

@@ -47,6 +47,7 @@ async def retrieve(state: State, retrieval_agent) -> dict:
         query=state["current_query"],
         original_question=sub_q,
         state=state,
+        round_no=state["retrieval_round"],
     )
 
     return {
@@ -57,20 +58,25 @@ async def retrieve(state: State, retrieval_agent) -> dict:
                 "decision": round_result.decision.value,
                 "reasoning": round_result.reasoning,
                 "chunks": round_result.chunk_retrieved,
+                "refined_query": getattr(round_result, "refined_query", None),
             }
         ],
         "retrieval_round": state["retrieval_round"] + 1,
+        "total_retrieval_steps": state.get("total_retrieval_steps", 0) + 1,
     }
 
 
 # Refine Query
 async def refine_query(state: State, retrieval_agent) -> dict:
-    new_query = await retrieval_agent.generate_refined_query(
-        original_question=state["sub_questions"][state["current_sub_question_idx"]],
-        previous_rounds=state["retrieval_round"],
-    )
+    last = state["retrieval_history"][-1]
+    refined = last.get("refined_query")
+    if not refined:
+        refined = await retrieval_agent.generate_refined_query(
+            original_question=state["sub_questions"][state["current_sub_question_idx"]],
+            previous_rounds=state["retrieval_history"],
+        )
 
-    return {"current_query": new_query}
+    return {"current_query": refined}
 
 
 # Sub question

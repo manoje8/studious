@@ -17,6 +17,7 @@ class State(TypedDict):
     current_sub_question_idx: int
     current_query: str
     retrieval_round: int
+    total_retrieval_steps: int
     max_retrieval_rounds: int
     retrieval_history: list[dict]
     accepted_chunks: list[dict]
@@ -28,4 +29,5 @@ class State(TypedDict):
     resolved_references: list
 
     # memory
+    conversational_history: list[dict]
     episodic_context: str

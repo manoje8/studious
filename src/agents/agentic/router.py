@@ -11,7 +11,9 @@ class RouterAgent:
         }
 
     async def classify(self, question: str, conversation_history: list = None) -> dict:
-        context_prompt = self._build_context_prompt(conversation_history)
+        context_prompt = ""
+        if conversation_history:
+            context_prompt = self._build_context_prompt(conversation_history)
 
         prompt = f"""
 You are an enterprise-grade intent router for a RAG (Retrieval-Augmented Generation) system.

@@ -25,7 +25,7 @@ class GraderAgent:
                     "accepted_count": 0,
                     "total_count": 0,
                 },
-                "needs_refinement": True,
+                "needs_refinement": False,
             }
 
         graded_chunks, graded_results = await self._grade_chunks_batch(
@@ -80,7 +80,7 @@ class GraderAgent:
                 "rejected_reasons": graded_results.get("rejected_reasons", []),
             },
             "accepted_chunks": graded_chunks,
-            "needs_refinement": True,
+            "needs_refinement": need_refinement,
         }
 
     async def _grade_chunks_batch(

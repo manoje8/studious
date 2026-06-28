@@ -10,6 +10,7 @@ streamlit
 rank_bm25
 
 google-genai
+cerebras_cloud_sdk
 
 google-cloud-storage
 google-cloud-aiplatform

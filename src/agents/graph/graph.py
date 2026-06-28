@@ -63,38 +63,35 @@ def build_rag_graph(
         route_after_classify,
         {
             "plan": "plan",
-            "direct_synthesize": "plan",
+            "direct_synthesize": "direct_synthesize",
             "simple_response": "handle_simple_response",
             "synthesize": "synthesize",
         },
     )
+
     builder.add_edge("plan", "retrieve")
+    builder.add_conditional_edges(
+        "retrieve",
+        route_after_retrieve,
+        {
+            "refine_query": "refine_query",
+            "next_sub_question": "next_sub_question",
+            "grade": "grade",
+        },
+    )
 
-    if is_multi_retriever:
-        builder.add_conditional_edges(
-            "retrieve",
-            route_after_retrieve,
-            {
-                "refine_query": "refine_query",
-                "next_sub_question": "next_sub_question",
-                "grade": "grade",
-                "retrieve": "retrieve",
-            },
-        )
-        builder.add_edge("refine_query", "retrieve")
-        builder.add_conditional_edges(
-            "next_sub_question",
-            route_after_next_sub_question,
-            {
-                "retrieve": "retrieve",
-                "grade": "grade",
-            },
-        )
-    else:
-        builder.add_edge("retrieve", "next_sub_question")
-        builder.add_edge("next_sub_question", "grade")
-        builder.add_edge("grade", "synthesize")
+    builder.add_edge("refine_query", "retrieve")
 
+    builder.add_conditional_edges(
+        "next_sub_question",
+        route_after_next_sub_question,
+        {
+            "retrieve": "retrieve",
+            "grade": "grade",
+        },
+    )
+
+    builder.add_edge("grade", "synthesize")
     builder.add_edge("direct_synthesize", END)
     builder.add_edge("handle_simple_response", END)
     builder.add_edge("synthesize", END)

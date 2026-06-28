@@ -18,6 +18,7 @@ class RetrievalRound:
     relevance_score: list[float]
     decision: RetrievalDecision
     reasoning: str
+    refined_query: str | None = None
 
 
 @dataclass()
