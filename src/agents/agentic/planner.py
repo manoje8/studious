@@ -10,14 +10,13 @@ class PlannerAgent:
             return [question]  # no decomposition needed
 
         prompt = f"""
-        Break this question into 2-4 focused sub-questions.
+        Break this question into 2 focused sub-questions.
         Each sub-question should be answerable from a single document section.
         Return only a JSON array of strings.
 
         Original question: {question}
 
-        Example output: ["What was memory usage in Q3?", "What was memory usage in Q4?",
-                         "What is the trend direction?"]
+        Example output: ["What was memory usage in Q3?", "What was memory usage in Q4?"]
         """
 
         response = await self.llm.complete(prompt)

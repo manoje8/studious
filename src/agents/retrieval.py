@@ -1,9 +1,10 @@
-from src.agents.agent_model import RetrievalRound, RetrievalDecision
+import logfire
+
+from src.agents.agent_model import RetrievalDecision, RetrievalRound
 from src.agents.graph.state import State
 from src.agents.hybrid_search import HybridSearch
 from src.agents.query_expander import QueryExpander
 from src.services.reranker import Reranker
-import logfire
 
 HIGH_CONFIDENCE_RRF_THRESHOLD = 0.85
 
@@ -21,28 +22,7 @@ class RetrievalAgent:
         self.reranker = reranker
         self.query_expand = query_expand
 
-        logfire.info(
-            "retrieval_agent_initialized",
-            has_llm=llm_client is not None,
-            has_hybrid_search=hybrid_search is not None,
-            has_reranker=reranker is not None,
-            has_query_expander=query_expand is not None,
-        )
-
-    async def _evaluate_results(
-        self, query: str, original_question: str, results: list[dict]
-    ):
-        logfire.debug(
-            "evaluating_retrieval_results",
-            query=query,
-            original_question=(
-                original_question[:100] + "..."
-                if len(original_question) > 100
-                else original_question
-            ),
-            num_results=len(results),
-        )
-
+    async def _evaluate_results(self, query: str, original_question: str, results: list[dict]):
         context_preview = "\n".join(
             f"Chunk {i}: {r['text'][:300]}..." for i, r in enumerate(results)
         )
@@ -68,8 +48,21 @@ Use "expand_search" if you need additional chunks on a different aspect.
 Use "exhausted" if the information is likely not in this document.
 """
 
-        response = await self.llm.complete(prompt)
-        return response.parsed_json
+        with logfire.span("llm_retrieval_evaluation_result", query=query, num_results=len(results)):
+            response = await self.llm.complete(prompt)
+            parsed_result = response.parsed_json
+            logfire.info(
+                "retrieval_evaluation_complete",
+                decision=parsed_result.get("decision"),
+                reasoning=(
+                    parsed_result.get("reasoning")[:100] + "..."
+                    if parsed_result.get("reasoning")
+                    else None
+                ),
+                has_refined_query=parsed_result.get("refined_query") is not None,
+            )
+
+            return parsed_result
 
     async def retrieve(
         self,
@@ -82,27 +75,29 @@ Use "exhausted" if the information is likely not in this document.
             expanded_queries = await self.query_expand.expand(query)
         else:
             expanded_queries = [query]
-            logfire.debug(
-                "using_original_query_for_subsequent_round", round_no=round_no
+            logfire.debug("using_original_query_for_subsequent_round", round_no=round_no)
+
+        with logfire.span("hybrid_search", num_queries=len(expanded_queries)):
+            candidates = await self.hybrid_search.search(
+                queries=expanded_queries, doc_id_filter=doc_id_filter
             )
 
-        candidates = await self.hybrid_search.search(
-            queries=expanded_queries, doc_id_filter=doc_id_filter
-        )
+        with logfire.span("reranking", num_candidates=len(candidates)):
+            rerank_results = await self.reranker.rerank(
+                query=original_question, candidates=candidates
+            )
 
-        rerank = await self.reranker.rerank(
-            query=original_question, candidates=candidates
-        )
+            logfire.debug(
+                "reranking_complete",
+                num_results=len(rerank_results),
+                top_score=(rerank_results[0].get("rrf_score", 0.0) if rerank_results else None),
+            )
 
-        return rerank
+        return rerank_results
 
     async def retrieve_and_evaluate(
         self, query: str, original_question: str, state: State, round_no: int = 0
     ) -> RetrievalRound:
-        results = await self.retrieve(
-            query, original_question, state["doc_id_filter"], round_no=round_no
-        )
-
         logfire.info(
             "retrieval_round_start",
             round_no=round_no,
@@ -114,7 +109,17 @@ Use "exhausted" if the information is likely not in this document.
             ),
         )
 
+        results = await self.retrieve(
+            query, original_question, state["doc_id_filter"], round_no=round_no
+        )
+
         if not results:
+            logfire.warning(
+                "no_results_found",
+                query=query,
+                round_no=round_no,
+                doc_id_filter=state.get("doc_id_filter"),
+            )
             return RetrievalRound(
                 query_used=query,
                 chunk_retrieved=[],
@@ -136,10 +141,17 @@ Use "exhausted" if the information is likely not in this document.
             return RetrievalRound(
                 query_used=query,
                 chunk_retrieved=results,
-                relevance_score=[r["rrf_sccore"] for r in results],
+                relevance_score=[r["rrf_score"] for r in results],
                 decision=RetrievalDecision.SUFFICIENT,
                 reasoning="Top rerank score {top_score:.2f} exceeded confidence threshold",
             )
+
+        logfire.debug(
+            "below_confidence_threshold_proceeding_to_evaluation",
+            top_score=top_score,
+            threshold=HIGH_CONFIDENCE_RRF_THRESHOLD,
+            round_no=round_no,
+        )
 
         evaluation = await self._evaluate_results(
             query=query, original_question=original_question, results=results
@@ -189,6 +201,19 @@ Use "exhausted" if the information is likely not in this document.
         Return only the query string, nothing else.
         """
 
-        response = await self.llm.complete(prompt)
+        with logfire.span("llm_refined_query_generation", num_previous_rounds=len(previous_rounds)):
+            response = await self.llm.complete(prompt)
+            refined_query = response.text.strip()
 
-        return response.text
+            logfire.info(
+                "refined_query_generated",
+                original_question=(
+                    original_question[:100] + "..."
+                    if len(original_question) > 100
+                    else original_question
+                ),
+                refined_query=refined_query,
+                previous_attempts=len(previous_rounds),
+            )
+
+            return refined_query

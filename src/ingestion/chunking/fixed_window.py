@@ -1,7 +1,7 @@
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
-from src.ingestion.chunking.Chunker import Chunker
 from src.ingestion.chunking.chunk import Chunk
+from src.ingestion.chunking.Chunker import Chunker
 
 
 class FixedWindow(Chunker):
@@ -9,17 +9,15 @@ class FixedWindow(Chunker):
         self,
         size: int = 512,
         overlap: int = 64,
-        token_len_fn: Optional[Callable[[str], int]] = None,
+        token_len_fn: Callable[[str], int] | None = None,
     ) -> None:
         if overlap >= size:
-            raise ValueError(
-                "Overlap tokens must be smaller than the chunk size tokens"
-            )
+            raise ValueError("Overlap tokens must be smaller than the chunk size tokens")
         self.chunk_size = size
         self.overlap = overlap
         self.token_len_fn = token_len_fn or (lambda s: len(s.split()))
 
-    def chunk(self, text: str, **kwargs) -> List[Chunk]:
+    def chunk(self, text: str, **kwargs) -> list[Chunk]:
         doc_id: str = kwargs.get("doc_id", "")
         source_file: str = kwargs.get("source_file", "")
 

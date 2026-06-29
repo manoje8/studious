@@ -14,10 +14,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.agents.agentic.synthesizer import (
+    _NO_CONTEXT_MSG,
     SynthesizerAgent,
     _build_context,
     _get,
-    _NO_CONTEXT_MSG,
 )
 
 

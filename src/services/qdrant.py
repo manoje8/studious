@@ -3,11 +3,11 @@ import uuid
 import logfire
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http.models import (
-    VectorParams,
     Distance,
-    Filter,
     FieldCondition,
+    Filter,
     MatchValue,
+    VectorParams,
 )
 
 from src.ingestion.embedding import EmbeddedChunk
@@ -45,18 +45,14 @@ class QdrantStorageService:
         if not exists:
             await self.client.create_collection(
                 collection_name=self.collection_name,
-                vectors_config=VectorParams(
-                    size=self.vector_size, distance=Distance.COSINE
-                ),
+                vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE),
             )
             logfire.info(f"Created Qdrant collection: {self.collection_name}")
         else:
             await self.validate_vector_dimension()
             logfire.info(f"Collection already exists: {self.collection_name}")
 
-    async def upsert_embedded_chunks(
-        self, embedded_chunks: list[EmbeddedChunk]
-    ) -> None:
+    async def upsert_embedded_chunks(self, embedded_chunks: list[EmbeddedChunk]) -> None:
         """Store embedded chunks in Qdrant in batches."""
 
         await self.ensure_collection_exists()
@@ -83,9 +79,7 @@ class QdrantStorageService:
             ]
 
             try:
-                await self.client.upsert(
-                    collection_name=self.collection_name, points=points
-                )
+                await self.client.upsert(collection_name=self.collection_name, points=points)
             except Exception as e:
                 logfire.error(
                     f"Batch {batch_num + 1}/{total_batches} failed",
@@ -95,10 +89,7 @@ class QdrantStorageService:
                 )
                 raise
 
-            logfire.info(
-                f"Upserted batch {batch_num + 1}/{total_batches}"
-                f"({len(points)} points)"
-            )
+            logfire.info(f"Upserted batch {batch_num + 1}/{total_batches}({len(points)} points)")
 
         logfire.info(f"Storage complete: {total} vectors in Qdrant")
 
@@ -112,9 +103,7 @@ class QdrantStorageService:
 
         if doc_id_filter:
             search_filter = Filter(
-                must=[
-                    FieldCondition(key="doc_id", match=MatchValue(value=doc_id_filter))
-                ]
+                must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id_filter))]
             )
 
         result = await self.client.query_points(

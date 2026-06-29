@@ -1,24 +1,24 @@
 from functools import partial
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 
 from src.agents.graph.edges import (
-    route_after_retrieve,
-    route_after_next_sub_question,
     route_after_classify,
+    route_after_next_sub_question,
+    route_after_retrieve,
 )
 from src.agents.graph.nodes import (
+    direct_synthesize,
+    grade,
+    handle_simple_response,
+    next_sub_question,
+    plan,
+    refine_query,
+    retrieve,
     rewrite_query,
     route,
-    plan,
-    retrieve,
-    refine_query,
-    next_sub_question,
-    grade,
     synthesize,
-    direct_synthesize,
-    handle_simple_response,
 )
 from src.agents.graph.state import State
 
@@ -42,15 +42,11 @@ def build_rag_graph(
     builder.add_node("route", partial(route, router=router))
     builder.add_node("plan", partial(plan, planner=planner))
     builder.add_node("retrieve", partial(retrieve, retrieval_agent=retrieval_agent))
-    builder.add_node(
-        "refine_query", partial(refine_query, retrieval_agent=retrieval_agent)
-    )
+    builder.add_node("refine_query", partial(refine_query, retrieval_agent=retrieval_agent))
     builder.add_node("next_sub_question", partial(next_sub_question))
     builder.add_node("grade", partial(grade, grader=grader))
     builder.add_node("synthesize", partial(synthesize, synthesizer=synthesizer))
-    builder.add_node(
-        "direct_synthesize", partial(direct_synthesize, synthesizer=synthesizer)
-    )
+    builder.add_node("direct_synthesize", partial(direct_synthesize, synthesizer=synthesizer))
     builder.add_node(
         "handle_simple_response",
         partial(handle_simple_response, synthesizer=synthesizer),

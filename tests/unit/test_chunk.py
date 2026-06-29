@@ -13,10 +13,10 @@ Covers:
 import pytest
 
 from src.ingestion.chunking.chunk import Chunk, Chunking
-from src.ingestion.chunking.fixed_window import FixedWindow
-from src.ingestion.chunking.recursive_character import RecursiveCharacterChunker
 from src.ingestion.chunking.chunker_factory import create_chunker
 from src.ingestion.chunking.chunking_config import ChunkingConfig
+from src.ingestion.chunking.fixed_window import FixedWindow
+from src.ingestion.chunking.recursive_character import RecursiveCharacterChunker
 from src.utils.constants import ChunkerStrategy
 
 
@@ -167,9 +167,7 @@ class TestFixedWindow:
 
     def test_returns_list(self):
         chunker = FixedWindow(size=5, overlap=1)
-        result = chunker.chunk(
-            "word1 word2 word3", doc_id=self.DOC_ID, source_file=self.SOURCE
-        )
+        result = chunker.chunk("word1 word2 word3", doc_id=self.DOC_ID, source_file=self.SOURCE)
         assert isinstance(result, list)
 
     def test_empty_input_returns_no_chunks(self):
@@ -185,9 +183,7 @@ class TestFixedWindow:
 
     def test_short_text_fits_in_single_chunk(self):
         chunker = FixedWindow(size=10, overlap=2)
-        chunks = chunker.chunk(
-            "hello world", doc_id=self.DOC_ID, source_file=self.SOURCE
-        )
+        chunks = chunker.chunk("hello world", doc_id=self.DOC_ID, source_file=self.SOURCE)
         assert len(chunks) == 1
         assert chunks[0].text == "hello world"
         assert chunks[0].chunk_type == "text"
@@ -228,9 +224,7 @@ class TestRecursiveCharacterChunker:
 
     def test_chunk_metadata_and_token_count(self):
         chunker = RecursiveCharacterChunker(size=100, overlap=10)
-        chunks = chunker.chunk(
-            "Hello world.", doc_id=self.DOC_ID, source_file=self.SOURCE
-        )
+        chunks = chunker.chunk("Hello world.", doc_id=self.DOC_ID, source_file=self.SOURCE)
         assert len(chunks) == 1
         c = chunks[0]
         assert c.doc_id == self.DOC_ID
@@ -261,9 +255,7 @@ class TestChunkerFactory:
         assert chunker.overlap == 32
 
     def test_create_recursive_character_chunker(self):
-        config = ChunkingConfig(
-            type=ChunkerStrategy.RECURSIVE_CHARACTER, size=1000, overlap=50
-        )
+        config = ChunkingConfig(type=ChunkerStrategy.RECURSIVE_CHARACTER, size=1000, overlap=50)
         chunker = create_chunker(config)
         assert isinstance(chunker, RecursiveCharacterChunker)
         assert chunker.size == 1000
@@ -290,7 +282,7 @@ class TestBuildParentChildChunk:
     def test_child_text_preserved(self, chunker):
         chunks = make_chunks(3)
         result = chunker.build_parent_child_chunk(chunks)
-        for original, enriched in zip(chunks, result):
+        for original, enriched in zip(chunks, result, strict=False):
             assert enriched.text == original.text
 
     def test_parent_text_non_empty(self, chunker):
@@ -334,7 +326,7 @@ class TestBuildParentChildChunk:
     def test_metadata_preserved(self, chunker):
         chunks = make_chunks(3)
         result = chunker.build_parent_child_chunk(chunks)
-        for original, enriched in zip(chunks, result):
+        for original, enriched in zip(chunks, result, strict=False):
             assert enriched.doc_id == original.doc_id
             assert enriched.source_file == original.source_file
             assert enriched.chunk_index == original.chunk_index

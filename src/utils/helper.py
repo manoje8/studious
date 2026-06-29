@@ -1,7 +1,7 @@
 import asyncio
 import os.path
 import sys
-from typing import List, Any, Tuple, Dict
+from typing import Any
 
 import logfire
 from ascii_colors import ASCIIColors
@@ -14,7 +14,9 @@ def check_env():
     env_path = ".env"
 
     if not os.path.exists(env_path):
-        warning_msg = "Warning: Startup directory must contain .env file for multi-instance support."
+        warning_msg = (
+            "Warning: Startup directory must contain .env file for multi-instance support."
+        )
         ASCIIColors.yellow(warning_msg)
 
         if sys.stdin.isatty():
@@ -33,9 +35,7 @@ async def bootstrap_sparse_index(
 
     if sparse_index.load():
         if len(sparse_index.chunks) == current_count:
-            logfire.info(
-                f"Loaded cache BM2 index ({current_count} chunks), skipped rebuild"
-            )
+            logfire.info(f"Loaded cache BM2 index ({current_count} chunks), skipped rebuild")
             return
         logfire.info(
             f"Cache index stale ({len(sparse_index.chunks)} vs {current_count} chunks), rebuilding"
@@ -55,8 +55,8 @@ async def bootstrap_sparse_index(
 
 
 def separate_content(
-    content_list: List[Dict[str, Any]],
-) -> Tuple[str, List[Dict[str, Any]]]:
+    content_list: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]]]:
     """
     Separate the content after parsing
     :param content_list:

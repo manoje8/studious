@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -18,9 +18,7 @@ class ConversationSession:
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def add_turn(self, role: str, content: str, metadata: dict = None):
-        self.turns.append(
-            ConversationTurn(role=role, content=content, metadata=metadata or {})
-        )
+        self.turns.append(ConversationTurn(role=role, content=content, metadata=metadata or {}))
 
     def get_recent_turns(self, n: int = 4):
         return self.turns[-n:]

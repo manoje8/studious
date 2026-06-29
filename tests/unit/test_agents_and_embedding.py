@@ -8,16 +8,17 @@ Covers:
 - EmbeddingService: embed_single(), embed_chunks() — batching, retries
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from src.agents.agent_model import RetrievalDecision, RetrievalRound
+from src.agents.agentic.synthesizer import SynthesizerAgent
 from src.agents.query_expander import QueryExpander
 from src.agents.retrieval import RetrievalAgent
-from src.agents.agent_model import RetrievalDecision, RetrievalRound
-from src.llm.base import LLMResponse
-from src.ingestion.embedding import EmbeddedChunk, EmbeddingService
 from src.ingestion.chunking.chunk import Chunk
-from src.agents.agentic.synthesizer import SynthesizerAgent
+from src.ingestion.embedding import EmbeddedChunk, EmbeddingService
+from src.llm.base import LLMResponse
 
 
 def _base_state(**overrides) -> dict:
@@ -189,9 +190,7 @@ class TestRetrievalAgent:
     @pytest.fixture
     def mock_query_expand(self):
         m = MagicMock()
-        m.expand = AsyncMock(
-            return_value=["What is RAG?", "Retrieval-Augmented Generation"]
-        )
+        m.expand = AsyncMock(return_value=["What is RAG?", "Retrieval-Augmented Generation"])
         return m
 
     @pytest.fixture
@@ -224,9 +223,7 @@ class TestRetrievalAgent:
 
         await agent.retrieve("query", "original", doc_id_filter="doc-1")
 
-        mock_hybrid_search.search.assert_awaited_once_with(
-            queries=expanded, doc_id_filter="doc-1"
-        )
+        mock_hybrid_search.search.assert_awaited_once_with(queries=expanded, doc_id_filter="doc-1")
 
     @pytest.mark.asyncio
     async def test_retrieve_calls_reranker_with_candidates(
@@ -307,13 +304,7 @@ class TestRetrievalAgent:
     # --- generate_refined_query ---
 
     def _make_retrieval_round(self, query="prev query", reasoning="not enough"):
-        return RetrievalRound(
-            query_used=query,
-            chunk_retrieved=[],
-            relevance_score=[],
-            decision=RetrievalDecision.REFINE_QUERY,
-            reasoning=reasoning,
-        )
+        return {"query": query, "reasoning": reasoning}
 
     @pytest.mark.asyncio
     async def test_generate_refined_query_returns_string(self, agent):
@@ -330,13 +321,9 @@ class TestRetrievalAgent:
         mock_llm.complete.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_generate_refined_query_prompt_contains_question(
-        self, agent, mock_llm
-    ):
+    async def test_generate_refined_query_prompt_contains_question(self, agent, mock_llm):
         rounds = [self._make_retrieval_round()]
-        await agent.generate_refined_query(
-            "original question text", previous_rounds=rounds
-        )
+        await agent.generate_refined_query("original question text", previous_rounds=rounds)
         prompt = mock_llm.complete.call_args[0][0]
         assert "original question text" in prompt
 
@@ -467,9 +454,7 @@ class TestEmbeddingService:
     @pytest.mark.asyncio
     async def test_embed_chunks_returns_embedded_chunks(self, service, mock_genai):
         chunks = [_make_chunk(text=f"chunk {i}", chunk_index=i) for i in range(2)]
-        self._mock_embed_response(
-            mock_genai, [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]
-        )
+        self._mock_embed_response(mock_genai, [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]])
 
         result = await service.embed_chunks(chunks)
 

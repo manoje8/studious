@@ -1,9 +1,8 @@
 import asyncio
 import json
 import re
-from datetime import datetime, UTC
 from abc import ABC, abstractmethod
-from typing import Optional, Dict
+from datetime import UTC, datetime
 
 
 class LLMParseError(Exception):
@@ -17,13 +16,11 @@ class LLMTimeoutError(Exception):
     def __init__(self, timeout_seconds: int, retry_count: int):
         self.timeout_seconds = timeout_seconds
         self.retry_count = retry_count
-        super().__init__(
-            f"LLM request timeout after {timeout_seconds}s (retries: {retry_count})"
-        )
+        super().__init__(f"LLM request timeout after {timeout_seconds}s (retries: {retry_count})")
 
 
 class LLMContentError(Exception):
-    def __init__(self, reason: str, details: Optional[Dict] = None):
+    def __init__(self, reason: str, details: dict | None = None):
         self.reason = reason
         self.details = details or {}
         super().__init__(f"LLM content error: {reason}")
@@ -45,7 +42,7 @@ class LLMRequestContext:
 
 
 class LLMResponse:
-    def __init__(self, raw_text: str, metadata: Optional[Dict] = None):
+    def __init__(self, raw_text: str, metadata: dict | None = None):
         self.raw_text = raw_text
         self.metadata = metadata or {}
         self._parsed = None
@@ -99,14 +96,10 @@ class BaseLLM(ABC):
         self._total_tokens = 0
 
     @abstractmethod
-    async def _complete_impl(
-        self, prompt: str, max_token: int, **kwargs
-    ) -> LLMResponse:
+    async def _complete_impl(self, prompt: str, max_token: int, **kwargs) -> LLMResponse:
         pass
 
-    async def complete(
-        self, prompt: str, max_tokens: int = 1024, **kwargs
-    ) -> LLMResponse:
+    async def complete(self, prompt: str, max_tokens: int = 1024, **kwargs) -> LLMResponse:
         context = LLMRequestContext(
             prompt=prompt,
             max_tokens=max_tokens,
@@ -122,17 +115,15 @@ class BaseLLM(ABC):
                     timeout=self.timeout_seconds,
                 )
                 self._call_count += 1
-                self._total_tokens += response.metadata.get("token_usage", {}).get(
-                    "total", 0
-                )
+                self._total_tokens += response.metadata.get("token_usage", {}).get("total", 0)
                 return response
 
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError as err:
                 if attempt == self.max_retries:
                     raise LLMTimeoutError(
                         timeout_seconds=self.timeout_seconds,
                         retry_count=attempt,
-                    )
+                    ) from err
 
                 await asyncio.sleep(2**attempt)
             except Exception as e:
@@ -140,7 +131,7 @@ class BaseLLM(ABC):
                     raise LLMContentError(
                         reason=str(e),
                         details=None,
-                    )
+                    ) from e
                 await asyncio.sleep(1)
 
         raise RuntimeError("Unexpected failure in LLM request")

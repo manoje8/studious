@@ -1,13 +1,12 @@
 import asyncio
-
-import logfire
 from dataclasses import dataclass
 
+import logfire
 from google import genai
 from qdrant_client.http.models import PointStruct
 
-from src.utils.config import config
 from src.ingestion.chunking.chunk import Chunk
+from src.utils.config import config
 
 
 @dataclass
@@ -68,9 +67,7 @@ class EmbeddingService:
                 return response.embeddings[0].values
             except Exception as e:
                 if attempt == self.max_retries - 1:
-                    logfire.error(
-                        f"Embedding failed after {self.max_retries} attempts: {e}"
-                    )
+                    logfire.error(f"Embedding failed after {self.max_retries} attempts: {e}")
                     raise
                 logfire.warning(f"Embedding attempt {attempt + 1} failed, retrying...")
                 await asyncio.sleep(self.retry_delay * (attempt + 1))
@@ -90,10 +87,7 @@ class EmbeddingService:
 
             batch = chunks[start:end]
 
-            logfire.info(
-                f"Embedding batch {batch_num+1}/{total_batches}"
-                f"({len(batch)} chunks)"
-            )
+            logfire.info(f"Embedding batch {batch_num + 1}/{total_batches}({len(batch)} chunks)")
 
             for attempt in range(self.max_retries):
                 try:
@@ -108,7 +102,7 @@ class EmbeddingService:
                         ),
                     )
 
-                    for chunk, emb in zip(batch, response.embeddings):
+                    for chunk, emb in zip(batch, response.embeddings, strict=False):
                         embedded.append(
                             EmbeddedChunk(
                                 chunk=chunk,

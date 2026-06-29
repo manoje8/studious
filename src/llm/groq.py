@@ -1,13 +1,11 @@
-from src.llm.base import BaseLLM, LLMResponse
 from langchain_groq import ChatGroq
 
+from src.llm.base import BaseLLM, LLMResponse
 from src.utils.config import config
 
 
 class GroqClient(BaseLLM):
-    def __init__(
-        self, model: str = "llama-3.3-70b-versatile", max_tokens: int = 1024, **kwargs
-    ):
+    def __init__(self, model: str = "llama-3.3-70b-versatile", max_tokens: int = 1024, **kwargs):
         super().__init__(**kwargs)
         self.model = model
         self.client = ChatGroq(
@@ -23,9 +21,7 @@ class GroqClient(BaseLLM):
     def model_name(self) -> str:
         return self.model
 
-    async def _complete_impl(
-        self, prompt: str, max_tokens: int = 1024, **kwargs
-    ) -> LLMResponse:
+    async def _complete_impl(self, prompt: str, max_tokens: int = 1024, **kwargs) -> LLMResponse:
         message = [{"role": "user", "content": prompt}]
         response = await self.client.ainvoke(message)
 
@@ -39,12 +35,10 @@ class GroqClient(BaseLLM):
                 "prompt_tokens": response.response_metadata.get("token_usage", {}).get(
                     "prompt_tokens", 0
                 ),
-                "completion_tokens": response.response_metadata.get(
-                    "token_usage", {}
-                ).get("completion_tokens", 0),
-                "total": response.response_metadata.get("token_usage", {}).get(
-                    "total_tokens", 0
+                "completion_tokens": response.response_metadata.get("token_usage", {}).get(
+                    "completion_tokens", 0
                 ),
+                "total": response.response_metadata.get("token_usage", {}).get("total_tokens", 0),
             }
 
         return LLMResponse(response.content, {"token_usage": token_usage})

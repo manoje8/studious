@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from dataclasses import dataclass
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from src.agents.hybrid_search import HybridSearch
 from src.ingestion.embedding import EmbeddingService
@@ -40,6 +41,7 @@ def mock_sparse_index():
     """Fixture for mocked sparse search index"""
     index = Mock(spec=SparseSearchIndex)
     index.search = Mock()
+    index.chunks = ["chunk"] * 30
     return index
 
 
@@ -346,11 +348,7 @@ class TestHybridSearch:
         # Should have results from both sources
         assert len(results) > 0
         # Results should be sorted by RRF score
-        assert (
-            results[0]["rrf_score"] >= results[-1]["rrf_score"]
-            if len(results) > 1
-            else True
-        )
+        assert results[0]["rrf_score"] >= results[-1]["rrf_score"] if len(results) > 1 else True
 
     @pytest.mark.asyncio
     async def test_empty_search_results(
@@ -623,9 +621,7 @@ class TestBootstrapSparseIndex:
         await bootstrap_sparse_index(mock_storage, mock_sparse_index)
 
         mock_storage.scroll_all_chunks.assert_called_once()
-        mock_sparse_index.build.assert_called_once_with(
-            mock_storage.scroll_all_chunks.return_value
-        )
+        mock_sparse_index.build.assert_called_once_with(mock_storage.scroll_all_chunks.return_value)
         mock_sparse_index.save.assert_called_once()
 
 

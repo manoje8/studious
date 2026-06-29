@@ -35,9 +35,7 @@ class MultiTurnAgenticRAGPipeline:
 
         await self.short_term.append_turn(session, "user", user_message)
 
-        rag_result = await self.rag.run(
-            question=effective_query, doc_id_filter=doc_id_filter
-        )
+        rag_result = await self.rag.run(question=effective_query, doc_id_filter=doc_id_filter)
 
         await self.short_term.append_turn(
             session,

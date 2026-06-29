@@ -34,9 +34,7 @@ class LocalStorage(BaseStorage):
             with open(target, "wb") as f:
                 shutil.copyfileobj(BytesIO(payload), f)
         else:
-            raise ValueError(
-                f"Unsupported data type: {type(data)}. " "Expected BinaryIO or list."
-            )
+            raise ValueError(f"Unsupported data type: {type(data)}. Expected BinaryIO or list.")
 
         if metadata is not None:
             meta_path = target.with_suffix(target.suffix + ".meta")

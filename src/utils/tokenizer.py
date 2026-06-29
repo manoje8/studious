@@ -1,15 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import List
 
 
 class TokenizerInterface(ABC):
     @abstractmethod
-    def encode(self, content: str) -> List[int]:
+    def encode(self, content: str) -> list[int]:
         "Encodes a string into a list of tokens."
         ...
 
     @abstractmethod
-    def decode(self, tokens: List[int]) -> str:
+    def decode(self, tokens: list[int]) -> str:
         "Decodes a list of tokens into a string."
         ...
 
@@ -23,7 +22,7 @@ class Tokenizer:
         self.model_name: str = model_name
         self.tokenizer: TokenizerInterface = tokenizer
 
-    def encode(self, content: str) -> List[int]:
+    def encode(self, content: str) -> list[int]:
         try:
             return self.tokenizer.encode(content)
         except Exception as e:
@@ -35,9 +34,9 @@ class Tokenizer:
             try:
                 return self.tokenizer.encode(content, allowed_special="all")
             except (TypeError, AttributeError):
-                raise e
+                raise
 
-    def decode(self, tokens: List[int]) -> str:
+    def decode(self, tokens: list[int]) -> str:
         return self.tokenizer.decode(tokens)
 
     def count(self, content: str) -> int:
@@ -50,13 +49,13 @@ class TikTokenTokenizer(Tokenizer):
         try:
             import tiktoken
 
-        except ImportError:
+        except ImportError as IE:
             raise ImportError(
                 "tiktoken is not installed. Please install it with `pip install tiktoken`"
-            )
+            ) from IE
 
         try:
             tokenizer = tiktoken.encoding_for_model(model_name=model_name)
             super().__init__(model_name=model_name, tokenizer=tokenizer)
-        except KeyError:
-            raise ValueError(f"Invalid model: {model_name}")
+        except KeyError as e:
+            raise ValueError(f"Invalid model: {model_name}") from e

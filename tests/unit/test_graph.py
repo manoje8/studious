@@ -9,23 +9,24 @@ Strategy:
   routing string.  We test every branch exhaustively.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from src.agents.graph.nodes import (
-    rewrite_query,
-    route,
-    plan,
-    retrieve,
-    refine_query,
-    next_sub_question,
-    grade,
-    synthesize,
-)
+import pytest
+
 from src.agents.graph.edges import (
     route_after_classify,
-    route_after_retrieve,
     route_after_next_sub_question,
+    route_after_retrieve,
+)
+from src.agents.graph.nodes import (
+    grade,
+    next_sub_question,
+    plan,
+    refine_query,
+    retrieve,
+    rewrite_query,
+    route,
+    synthesize,
 )
 
 # Helpers
@@ -139,9 +140,7 @@ class TestRewriteQueryNode:
         assert result["resolved_references"] == ["RAG"]
 
     @pytest.mark.asyncio
-    async def test_unchanged_query(
-        self, mock_short_term, mock_rewriter_unchanged, mock_episodic
-    ):
+    async def test_unchanged_query(self, mock_short_term, mock_rewriter_unchanged, mock_episodic):
         state = _base_state()
         result = await rewrite_query(
             state,
@@ -215,9 +214,7 @@ class TestRouteNode:
     @pytest.mark.asyncio
     async def test_different_categories(self, mock_router):
         for category in ["factual", "analytical", "comparative"]:
-            mock_router.classify = AsyncMock(
-                return_value={"primary_category": category}
-            )
+            mock_router.classify = AsyncMock(return_value={"primary_category": category})
             state = _base_state()
             result = await route(state, router=mock_router)
             assert result["question_category"] == category
@@ -268,9 +265,7 @@ class TestPlanNode:
         )
         await plan(state, planner=mock_planner)
 
-        mock_planner.decompose.assert_awaited_once_with(
-            "Compare FAISS and Qdrant", "comparative"
-        )
+        mock_planner.decompose.assert_awaited_once_with("Compare FAISS and Qdrant", "comparative")
 
     @pytest.mark.asyncio
     async def test_single_sub_question(self, mock_planner):
@@ -329,9 +324,7 @@ class TestRetrieveNode:
 
     @pytest.mark.asyncio
     async def test_existing_history_preserved(self, mock_retrieval_agent):
-        existing = [
-            {"query": "old", "decision": "sufficient", "reasoning": "", "chunks": []}
-        ]
+        existing = [{"query": "old", "decision": "sufficient", "reasoning": "", "chunks": []}]
         state = _base_state(retrieval_history=existing, retrieval_round=1)
         result = await retrieve(state, retrieval_agent=mock_retrieval_agent)
 
@@ -339,9 +332,7 @@ class TestRetrieveNode:
         assert result["retrieval_history"][0]["query"] == "old"
 
     @pytest.mark.asyncio
-    async def test_retrieval_agent_receives_current_sub_question(
-        self, mock_retrieval_agent
-    ):
+    async def test_retrieval_agent_receives_current_sub_question(self, mock_retrieval_agent):
         state = _base_state(
             sub_questions=["q0", "q1"],
             current_sub_question_idx=1,
@@ -368,8 +359,12 @@ class TestRefineQueryNode:
     @pytest.mark.asyncio
     async def test_returns_current_query_key(self, mock_retrieval_agent):
         state = _base_state(
-            sub_questions=["q0"], current_sub_question_idx=0, retrieval_round=1
+            sub_questions=["q0"],
+            current_sub_question_idx=0,
+            retrieval_round=1,
+            refine_query="q1",
         )
+        state["retrieval_history"] = [{"query": "original query", "reasoning": "some reasoning"}]
         result = await refine_query(state, retrieval_agent=mock_retrieval_agent)
 
         assert "current_query" in result
@@ -382,11 +377,16 @@ class TestRefineQueryNode:
             current_sub_question_idx=1,
             retrieval_round=2,
         )
+        retrieval_history = [
+            {"query": "original query", "reasoning": "some reasoning"},
+            {"query": "second query", "reasoning": "more reasoning"},
+        ]
+        state["retrieval_history"] = retrieval_history
         await refine_query(state, retrieval_agent=mock_retrieval_agent)
 
         call_kwargs = mock_retrieval_agent.generate_refined_query.call_args[1]
         assert call_kwargs["original_question"] == "q1"
-        assert call_kwargs["previous_rounds"] == 2
+        assert call_kwargs["previous_rounds"] == retrieval_history
 
 
 # Node: next_sub_question
@@ -422,9 +422,7 @@ class TestNextSubQuestionNode:
 
     @pytest.mark.asyncio
     async def test_increments_sub_question_index(self):
-        history = [
-            {"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}
-        ]
+        history = [{"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}]
         state = _base_state(
             retrieval_history=history,
             current_sub_question_idx=0,
@@ -437,9 +435,7 @@ class TestNextSubQuestionNode:
 
     @pytest.mark.asyncio
     async def test_resets_retrieval_round(self):
-        history = [
-            {"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}
-        ]
+        history = [{"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}]
         state = _base_state(
             retrieval_history=history,
             current_sub_question_idx=0,
@@ -453,9 +449,7 @@ class TestNextSubQuestionNode:
 
     @pytest.mark.asyncio
     async def test_sets_current_query_when_more_sub_questions_remain(self):
-        history = [
-            {"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}
-        ]
+        history = [{"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}]
         state = _base_state(
             retrieval_history=history,
             current_sub_question_idx=0,
@@ -470,9 +464,7 @@ class TestNextSubQuestionNode:
     @pytest.mark.asyncio
     async def test_no_current_query_set_when_no_more_sub_questions(self):
         """When advancing past the last sub-question, current_query is not touched."""
-        history = [
-            {"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}
-        ]
+        history = [{"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}]
         state = _base_state(
             retrieval_history=history,
             current_sub_question_idx=0,
@@ -487,9 +479,7 @@ class TestNextSubQuestionNode:
     @pytest.mark.asyncio
     async def test_handles_none_accepted_chunks(self):
         """accepted_chunks=None in state should not raise."""
-        history = [
-            {"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}
-        ]
+        history = [{"query": "q", "decision": "sufficient", "reasoning": "", "chunks": []}]
         state = _base_state(
             retrieval_history=history,
             current_sub_question_idx=0,
@@ -515,12 +505,8 @@ class TestGradeNode:
 
     @pytest.mark.asyncio
     async def test_graded_chunks_are_returned(self, mock_grader):
-        state = _base_state(
-            accepted_chunks=[{"text": "raw chunk"}], effective_query="q"
-        )
+        state = _base_state(accepted_chunks=[{"text": "raw chunk"}], effective_query="q")
         result = await grade(state, grader=mock_grader)
-
-        print(result)
 
         assert result == [{"text": "graded chunk", "source": "b.pdf"}]
 
@@ -619,9 +605,7 @@ class TestRouteAfterClassify:
 class TestRouteAfterRetrieve:
     """Tests for the route_after_retrieve conditional edge — all branches."""
 
-    def _state_with_last_decision(
-        self, decision, round_no, max_rounds, sub_q_idx, total_sub_qs
-    ):
+    def _state_with_last_decision(self, decision, round_no, max_rounds, sub_q_idx, total_sub_qs):
         history = [{"query": "q", "decision": decision, "reasoning": "", "chunks": []}]
         return _base_state(
             retrieval_history=history,
@@ -633,21 +617,15 @@ class TestRouteAfterRetrieve:
 
     # --- sufficient ---
     def test_sufficient_with_more_sub_questions_goes_to_next_sub_question(self):
-        state = self._state_with_last_decision(
-            "sufficient", 1, 3, sub_q_idx=0, total_sub_qs=2
-        )
+        state = self._state_with_last_decision("sufficient", 1, 3, sub_q_idx=0, total_sub_qs=2)
         assert route_after_retrieve(state) == "next_sub_question"
 
     def test_sufficient_on_last_sub_question_goes_to_grade(self):
-        state = self._state_with_last_decision(
-            "sufficient", 1, 3, sub_q_idx=1, total_sub_qs=2
-        )
+        state = self._state_with_last_decision("sufficient", 1, 3, sub_q_idx=1, total_sub_qs=2)
         assert route_after_retrieve(state) == "grade"
 
     def test_sufficient_single_sub_question_goes_to_grade(self):
-        state = self._state_with_last_decision(
-            "sufficient", 1, 3, sub_q_idx=0, total_sub_qs=1
-        )
+        state = self._state_with_last_decision("sufficient", 1, 3, sub_q_idx=0, total_sub_qs=1)
         assert route_after_retrieve(state) == "grade"
 
     # --- refine_query ---
@@ -672,15 +650,11 @@ class TestRouteAfterRetrieve:
 
     # --- expand_search ---
     def test_expand_search_with_more_sub_questions_goes_to_next_sub_question(self):
-        state = self._state_with_last_decision(
-            "expand_search", 1, 3, sub_q_idx=0, total_sub_qs=2
-        )
+        state = self._state_with_last_decision("expand_search", 1, 3, sub_q_idx=0, total_sub_qs=2)
         assert route_after_retrieve(state) == "next_sub_question"
 
     def test_expand_search_on_last_sub_question_goes_to_grade(self):
-        state = self._state_with_last_decision(
-            "expand_search", 1, 3, sub_q_idx=1, total_sub_qs=2
-        )
+        state = self._state_with_last_decision("expand_search", 1, 3, sub_q_idx=1, total_sub_qs=2)
         assert route_after_retrieve(state) == "grade"
 
     # --- unknown / fallback ---

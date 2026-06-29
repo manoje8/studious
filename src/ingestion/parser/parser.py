@@ -1,11 +1,10 @@
 import hashlib
 from pathlib import Path
-from typing import Union, Optional
 
 import trafilatura
 from bs4 import BeautifulSoup
 
-from src.utils.constants import SKIP_TAGS, HEADING_TAGS, BLOCK_TAGS, ParseMethod
+from src.utils.constants import BLOCK_TAGS, HEADING_TAGS, SKIP_TAGS, ParseMethod
 
 
 class Parser:
@@ -45,9 +44,7 @@ class Parser:
         return text
 
     @staticmethod
-    def _unique_output_dir(
-        base_dir: Union[str, Path], file_path: Union[str, Path]
-    ) -> Path:
+    def _unique_output_dir(base_dir: str | Path, file_path: str | Path) -> Path:
         """
         Create a unique output subdirectory for a file to prevent same-name collisions
         """
@@ -71,10 +68,10 @@ class Parser:
 
     def parse_pdf(
         self,
-        pdf_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        pdf_path: str | Path,
+        output_dir: str | None = None,
         method: ParseMethod = ParseMethod.DOCLING.value,
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         """Abstract method to parse PDF document"""
@@ -82,18 +79,16 @@ class Parser:
 
     def parse_doc(
         self,
-        file_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        file_path: str | Path,
+        output_dir: str | None = None,
         method: str = "auto",
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         raise NotImplementedError("parse_office_doc must be implemented by sub-classes")
 
     def check_installation(self) -> bool:
-        raise NotImplementedError(
-            "check_installation must be implemented by subclasses"
-        )
+        raise NotImplementedError("check_installation must be implemented by subclasses")
 
     def _get_clean_text(self, tag) -> str:
         return " ".join(tag.get_text(separator=" ").split())
@@ -103,14 +98,14 @@ class Parser:
         rows = []
         headers = [th.get_text(strip=True) for th in table_tag.find_all("th")]
 
-        for row in table_tag.find_all("tr"):
+        for _row in table_tag.find_all("tr"):
             cells = [td.get_text(strip=True) for td in table_tag.find_all("td")]
 
             if not cells:
                 continue
 
             if headers:
-                rows.append(" | ".join(f"{h}: {c}") for h, c in zip(headers, cells))
+                rows.append(" | ".join(f"{h}: {c}") for h, c in zip(headers, cells, strict=False))
             else:
                 rows.append(" | ".join(cells))
 

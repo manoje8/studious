@@ -8,9 +8,10 @@ Covers:
 - ConversationSession / EpisodicSummary data models
 """
 
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.agents.memory.conversation_model import (
     ConversationSession,

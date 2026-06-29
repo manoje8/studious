@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Union
+
 import logfire
 
 from src.agents.agent_model import AgentState
@@ -15,7 +15,7 @@ _NO_CONTEXT_MSG = (
 )
 
 
-def _get(state: Union[AgentState, dict], key: str, attr: str | None = None):
+def _get(state: AgentState | dict, key: str, attr: str | None = None):
     """Unified accessor for both AgentState dataclass and LangGraph State dict."""
 
     if isinstance(state, dict):
@@ -23,7 +23,7 @@ def _get(state: Union[AgentState, dict], key: str, attr: str | None = None):
     return getattr(state, attr or key, None)
 
 
-def _build_context(state: Union[AgentState, dict], max_chars: int | None = None) -> str:
+def _build_context(state: AgentState | dict, max_chars: int | None = None) -> str:
     """Build context string with token budget guard.
 
     Chunks are added in order until the character budget is reached.
@@ -72,7 +72,7 @@ class SynthesizerAgent:
     def __init__(self, llm_client):
         self.llm = llm_client
 
-    async def synthesize(self, state: Union[State, dict]) -> str:
+    async def synthesize(self, state: State | dict) -> str:
         """
         Main synthesis entry point that handles all question categories.
         Returns the final answer string.
@@ -97,7 +97,7 @@ class SynthesizerAgent:
         else:
             return await self._synthesize_factual(state)
 
-    async def direct_synthesize(self, state: Union[State, dict]) -> dict:
+    async def direct_synthesize(self, state: State | dict) -> dict:
         """
         Handle simple factual queries without complex retrieval chain.
         Used in the 'direct_synthesize' graph node.
@@ -114,7 +114,7 @@ class SynthesizerAgent:
             },
         }
 
-    async def handle_simple_response(self, state: Union[State, dict]) -> dict:
+    async def handle_simple_response(self, state: State | dict) -> dict:
         """
         Handle chitchat and meta queries without any retrieval.
         Used in the 'handle_simple_response' graph node.
@@ -132,7 +132,7 @@ class SynthesizerAgent:
             "synthesis_metadata": {"category": category, "no_retrieval": True},
         }
 
-    async def _synthesize_factual(self, state: Union[State, dict]) -> str:
+    async def _synthesize_factual(self, state: State | dict) -> str:
         """Synthesize factual answers with strict source attribution."""
         fallback = self._require_context(state)
         if fallback:
@@ -167,7 +167,7 @@ Answer format:
         response = await self.llm.complete(prompt)
         return self._ensure_citations(response.text, state)
 
-    async def _synthesize_chitchat(self, state: Union[State, dict]) -> str:
+    async def _synthesize_chitchat(self, state: State | dict) -> str:
         """Handle casual conversation with friendly tone."""
         original_question = self._get_question(state)
         retrieval_history = _get(state, "retrieval_history") or []
@@ -191,7 +191,7 @@ Guidelines:
         response = await self.llm.complete(prompt)
         return response.text
 
-    async def _synthesize_meta(self, state: Union[State, dict]) -> str:
+    async def _synthesize_meta(self, state: State | dict) -> str:
         """Handle questions about the system's capabilities."""
         prompt = """
 You are an Enterprise AI Assistant. Answer questions about your capabilities
@@ -216,7 +216,7 @@ Respond helpfully and offer to assist with document-based questions.
         response = await self.llm.complete(prompt)
         return response.text
 
-    async def _synthesize_comparative(self, state: Union[State, dict]) -> str:
+    async def _synthesize_comparative(self, state: State | dict) -> str:
         """Synthesize comparative analysis with structured comparison."""
         fallback = self._require_context(state)
         if fallback:
@@ -259,7 +259,7 @@ Rules:
         response = await self.llm.complete(prompt)
         return self._ensure_citations(response.text, state)
 
-    async def _synthesize_analytical(self, state: Union[State, dict]) -> str:
+    async def _synthesize_analytical(self, state: State | dict) -> str:
         """Synthesize analytical answers with reasoning chains."""
         fallback = self._require_context(state)
         if fallback:
@@ -301,7 +301,7 @@ Rules:
         response = await self.llm.complete(prompt)
         return self._ensure_citations(response.text, state)
 
-    async def _synthesize_summarization(self, state: Union[State, dict]) -> str:
+    async def _synthesize_summarization(self, state: State | dict) -> str:
         """Synthesize summaries with hierarchical structure."""
         fallback = self._require_context(state)
         if fallback:
@@ -342,7 +342,7 @@ Rules:
         response = await self.llm.complete(prompt)
         return self._ensure_citations(response.text, state)
 
-    async def _synthesize_clarification(self, state: Union[State, dict]) -> str:
+    async def _synthesize_clarification(self, state: State | dict) -> str:
         """Handle clarification requests by providing more detail."""
         fallback = self._require_context(state)
         if fallback:
@@ -375,7 +375,7 @@ Guidelines:
         response = await self.llm.complete(prompt)
         return self._ensure_citations(response.text, state)
 
-    async def _synthesize_procedural(self, state: Union[State, dict]) -> str:
+    async def _synthesize_procedural(self, state: State | dict) -> str:
         """Synthesize step-by-step procedural guidance."""
         fallback = self._require_context(state)
         if fallback:
@@ -434,14 +434,14 @@ Provide:
         response = await self.llm.complete(prompt)
         return response.text
 
-    def _require_context(self, state: Union[State, dict]) -> str | None:
+    def _require_context(self, state: State | dict) -> str | None:
         """Return a fallback message if no accepted chunks exist, else None."""
         chunks = _get(state, "accepted_chunks") or []
         if not chunks:
             return _NO_CONTEXT_MSG
         return None
 
-    def _ensure_citations(self, response_text: str, state: Union[State, dict]) -> str:
+    def _ensure_citations(self, response_text: str, state: State | dict) -> str:
         if re.search(r"\[.+?\]", response_text):
             return response_text
 
@@ -451,14 +451,13 @@ Provide:
 
         sections = list(
             dict.fromkeys(
-                f"{c.get('source', 'unknown')} — {c.get('section', 'unknown')}"
-                for c in chunks
+                f"{c.get('source', 'unknown')} — {c.get('section', 'unknown')}" for c in chunks
             )
         )
         footer = "\n\n---\n**Sources Used:**\n" + "\n".join(f"- {s}" for s in sections)
         return response_text + footer
 
-    def _get_question(self, state: Union[State, dict]) -> str:
+    def _get_question(self, state: State | dict) -> str:
         """Extract the question from state regardless of type."""
 
         if isinstance(state, AgentState):

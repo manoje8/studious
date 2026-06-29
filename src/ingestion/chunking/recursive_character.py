@@ -1,9 +1,9 @@
 import logfire
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from src.ingestion.chunking.Chunker import Chunker
 from src.ingestion.chunking.chunk import Chunk
-from src.utils.tokenizer import Tokenizer, TikTokenTokenizer
+from src.ingestion.chunking.Chunker import Chunker
+from src.utils.tokenizer import TikTokenTokenizer, Tokenizer
 
 
 class RecursiveCharacterChunker(Chunker):
@@ -11,9 +11,7 @@ class RecursiveCharacterChunker(Chunker):
     For articles, books, reports
     """
 
-    def __init__(
-        self, size: int = 1200, overlap: int = 100, tokenizer: Tokenizer = None
-    ):
+    def __init__(self, size: int = 1200, overlap: int = 100, tokenizer: Tokenizer = None):
         self.size = size
         self.overlap = overlap
         self.tokenizer = tokenizer or TikTokenTokenizer(model_name="gpt-4o-mini")
@@ -38,9 +36,7 @@ class RecursiveCharacterChunker(Chunker):
     ) -> list[Chunk]:
         doc_id: str = kwargs.get("doc_id", "")
         source_file: str = kwargs.get("source_file", "")
-        separators: list[str] = kwargs.get(
-            "separator", ["```", "| ---", "\n\n", "\n", " "]
-        )
+        separators: list[str] = kwargs.get("separator", ["```", "| ---", "\n\n", "\n", " "])
 
         if not text or not text.strip():
             return []

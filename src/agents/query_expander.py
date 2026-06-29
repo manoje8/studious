@@ -7,7 +7,7 @@ class QueryExpander:
 
     async def expand(self, query: str) -> list[str]:
         prompt = f"""
-        Generate 3 alternative phrasings of this search query.
+        Generate 2 alternative phrasings of this search query.
         Each phrasing should use different vocabulary but seek the same information.
         Keep each phrasing concise — under 15 words.
         Return a JSON array of strings only. Do not include the original query.

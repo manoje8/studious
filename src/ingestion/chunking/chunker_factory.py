@@ -39,9 +39,7 @@ def create_chunker(config: ChunkingConfig):
                     RecursiveCharacterChunker,
                 )
 
-                register_chunker(
-                    ChunkerStrategy.RECURSIVE_CHARACTER, RecursiveCharacterChunker
-                )
+                register_chunker(ChunkerStrategy.RECURSIVE_CHARACTER, RecursiveCharacterChunker)
             case _:
                 msg = f"ChunkingConfig.strategy '{chunker_strategy}' is not registered in the ChunkerFactory. Registered types: {', '.join(chunker_factory.keys())}."
                 raise ValueError(msg)

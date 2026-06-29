@@ -1,15 +1,15 @@
 import io
 from pathlib import Path
-from typing import Union, Optional
 
 import logfire
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from google.cloud import documentai
 from pypdf import PdfReader, PdfWriter
 
-from .parser import Parser
 from src.utils.config import config
 from src.utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
+
+from .parser import Parser
 
 
 class GoogleDocAI(Parser):
@@ -19,10 +19,10 @@ class GoogleDocAI(Parser):
 
     def parse_pdf(
         self,
-        file_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        file_path: str | Path,
+        output_dir: str | None = None,
         method: str = "auto",
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         try:
@@ -44,10 +44,10 @@ class GoogleDocAI(Parser):
 
     def parse_doc(
         self,
-        file_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        file_path: str | Path,
+        output_dir: str | None = None,
         method: str = "auto",
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         doc_path = Path(file_path)
@@ -72,10 +72,10 @@ class GoogleDocAI(Parser):
 
     def parse_html(
         self,
-        file_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        file_path: str | Path,
+        output_dir: str | None = None,
         method: str = "auto",
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         try:
@@ -91,7 +91,7 @@ class GoogleDocAI(Parser):
 
             logfire.info(f"Parsing {name_without_suff} html")
 
-            with open(html_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(html_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             content_list = self.extract_html_content(content)
@@ -113,7 +113,7 @@ class GoogleDocAI(Parser):
             )
             return False
 
-    def _process_pdf(self, file_path: Optional[Path | str]):
+    def _process_pdf(self, file_path: Path | str):
         name_without_suffix = file_path.stem
         ext = file_path.suffix
 
@@ -145,7 +145,7 @@ class GoogleDocAI(Parser):
                     writer.write(bs)
                     file_bytes = bs.getvalue()
 
-                with logfire.span(f"Processing pages {i+1} to {split_end}"):
+                with logfire.span(f"Processing pages {i + 1} to {split_end}"):
                     split_text = self._process_with_doc_ai(file_bytes, ext)
 
                     text += split_text + "\n"
@@ -167,9 +167,7 @@ class GoogleDocAI(Parser):
             )
 
             raw_doc = documentai.RawDocument(content=content, mime_type=mime_type)
-            request = documentai.ProcessRequest(
-                name=processor_name, raw_document=raw_doc
-            )
+            request = documentai.ProcessRequest(name=processor_name, raw_document=raw_doc)
 
             result = self.client.process_document(request=request)
             return result.document.text

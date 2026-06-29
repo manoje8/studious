@@ -1,7 +1,8 @@
-import pytest
+import threading
 from pathlib import Path
 from unittest.mock import Mock, patch
-import threading
+
+import pytest
 
 from src.ingestion.parser.docling_parser import DoclingParser
 
@@ -83,9 +84,7 @@ class TestDoclingParser:
     def test_check_installation_failure(self, parser):
         """Test failed installation check"""
         # Patch sys.modules to simulate import failure
-        with patch.dict(
-            "sys.modules", {"docling": None, "docling.document_converter": None}
-        ):
+        with patch.dict("sys.modules", {"docling": None, "docling.document_converter": None}):
             assert parser.check_installation() is False
 
     # Test _get_converter
@@ -193,9 +192,7 @@ class TestDoclingParser:
         with pytest.raises(FileNotFoundError):
             parser.parse_doc(non_existent_path)
 
-    def test_parse_doc_office_format(
-        self, parser, mock_office_path, mock_docling_result
-    ):
+    def test_parse_doc_office_format(self, parser, mock_office_path, mock_docling_result):
         """Test parsing an Office format file"""
         with patch.object(parser, "_get_converter") as mock_get_converter:
             mock_converter = Mock()
@@ -331,9 +328,7 @@ class TestDoclingParser:
             assert len(result) == 1
             assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
 
-    def test_parse_html_with_xhtml_extension(
-        self, parser, tmp_path, mock_docling_result
-    ):
+    def test_parse_html_with_xhtml_extension(self, parser, tmp_path, mock_docling_result):
         """Test that parse_html accepts .xhtml files"""
         xhtml_path = tmp_path / "test.xhtml"
         xhtml_path.touch()
@@ -379,7 +374,7 @@ class TestDoclingParser:
     # Edge cases and additional tests
     def test_parse_doc_with_empty_file_path(self, parser):
         """Test parsing with an empty file path"""
-        with pytest.raises(Exception):
+        with pytest.raises(FileNotFoundError):
             parser.parse_doc(Path(""))
 
     def test_parse_doc_with_directory_path(self, parser, tmp_path):
@@ -387,7 +382,7 @@ class TestDoclingParser:
         dir_path = tmp_path / "test_dir"
         dir_path.mkdir()
 
-        with pytest.raises(Exception):
+        with pytest.raises(FileNotFoundError):
             parser.parse_doc(dir_path)
 
     def test_converter_cache_isolation(self):
@@ -412,9 +407,7 @@ class TestDoclingParser:
             mock_config.DO_TABLES = False
             mock_config.DO_OCR = True
 
-            with patch(
-                "docling.document_converter.DocumentConverter"
-            ) as mock_converter:
+            with patch("docling.document_converter.DocumentConverter") as mock_converter:
                 parser._get_converter()
 
                 # Verify converter was created with correct options

@@ -7,10 +7,11 @@ Covers:
 """
 
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
-from src.llm.base import LLMResponse, BaseLLM, LLMContentError
+import pytest
+
+from src.llm.base import BaseLLM, LLMContentError, LLMResponse
 from src.llm.gemini import GeminiClient
 
 
@@ -53,7 +54,7 @@ class TestLLMResponse:
 
     def test_parsed_json_invalid_raises(self):
         resp = LLMResponse("not valid json")
-        with pytest.raises(Exception):
+        with pytest.raises(json.JSONDecodeError):
             _ = resp.parsed_json
 
     def test_parsed_json_with_surrounding_whitespace(self):
@@ -73,18 +74,14 @@ class TestBaseLLMInterface:
 
     def test_concrete_subclass_works(self):
         class FakeLLM(BaseLLM):
-            async def _complete_impl(
-                self, prompt: str, max_token: int, **kwargs
-            ) -> LLMResponse:
+            async def _complete_impl(self, prompt: str, max_token: int, **kwargs) -> LLMResponse:
                 return LLMResponse("ok")
 
             @property
             def model_name(self) -> str:
                 pass
 
-            async def complete(
-                self, prompt: str, max_token: int = 1024, **kwargs
-            ) -> LLMResponse:
+            async def complete(self, prompt: str, max_token: int = 1024, **kwargs) -> LLMResponse:
                 return LLMResponse("ok")
 
         llm = FakeLLM()
@@ -130,9 +127,7 @@ class TestGeminiClient:
         assert result.text == "Test answer"
 
     @pytest.mark.asyncio
-    async def test_complete_calls_generate_content_with_prompt(
-        self, gemini, mock_genai
-    ):
+    async def test_complete_calls_generate_content_with_prompt(self, gemini, mock_genai):
         mock_response = MagicMock()
         mock_response.text = "answer"
         mock_genai["client"].models.generate_content.return_value = mock_response
@@ -153,9 +148,7 @@ class TestGeminiClient:
             await gemini.complete("What?")
 
     @pytest.mark.asyncio
-    async def test_complete_raises_with_finish_reason_when_no_text(
-        self, gemini, mock_genai
-    ):
+    async def test_complete_raises_with_finish_reason_when_no_text(self, gemini, mock_genai):
         mock_candidate = MagicMock()
         mock_candidate.finish_reason = "SAFETY"
         mock_response = MagicMock()

@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass, field
 
-from src.utils.tokenizer import Tokenizer, TikTokenTokenizer
+from src.utils.tokenizer import TikTokenTokenizer, Tokenizer
 
 
 @dataclass
@@ -99,9 +99,7 @@ class Chunking:
             token_count=self.tokenizer.count(text),
         )
 
-    def build_parent_child_chunk(
-        self, chunks: list[Chunk], parent_window: int = 3
-    ) -> list[Chunk]:
+    def build_parent_child_chunk(self, chunks: list[Chunk], parent_window: int = 3) -> list[Chunk]:
         """
         Enrich each child chunk with a broader parent context window.
 

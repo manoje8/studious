@@ -1,8 +1,8 @@
 import asyncio
 
-from src.llm.base import BaseLLM, LLMResponse
 from cerebras.cloud.sdk import AsyncCerebras
 
+from src.llm.base import BaseLLM, LLMResponse
 from src.utils.config import config
 
 
@@ -14,9 +14,7 @@ class CerebrasAI(BaseLLM):
             api_key=config.CEREBRAS_API_KEY,
         )
 
-    async def _complete_impl(
-        self, prompt: str, max_token: int, **kwargs
-    ) -> LLMResponse:
+    async def _complete_impl(self, prompt: str, max_token: int, **kwargs) -> LLMResponse:
         loop = asyncio.get_event_loop()
 
         completion = await loop.run_in_executor(

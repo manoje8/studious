@@ -1,6 +1,7 @@
 from abc import ABC
-from typing import TypeVar, Literal, Generic, Callable, Any, ClassVar
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, ClassVar, Generic, Literal, TypeVar
 
 from src.utils.hasher import hash_data
 
@@ -63,9 +64,7 @@ class Factory(ABC, Generic[T]):
             )
 
             if cache_key not in self._initialized_services:
-                self._initialized_services[cache_key] = service_descriptor.initializer(
-                    **init_args
-                )
+                self._initialized_services[cache_key] = service_descriptor.initializer(**init_args)
 
             return self._initialized_services[cache_key]
 

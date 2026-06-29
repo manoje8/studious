@@ -2,27 +2,26 @@ import asyncio
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict
 
 import logfire
 
 from src.ingestion.chunking.chunker_factory import create_chunker
 from src.ingestion.chunking.chunking_config import ChunkingConfig
+from src.ingestion.embedding import EmbeddingService
 from src.ingestion.parser.docling_parser import DoclingParser
 from src.ingestion.parser.google_doc_ai import GoogleDocAI
-from src.ingestion.embedding import EmbeddingService
 from src.services.qdrant import QdrantStorageService
 from src.services.sparse_index import SparseSearchIndex
 from src.storage.storage_factory import StorageFactory
+from src.utils.config import config
 from src.utils.constants import (
     HTML_FORMATS,
     OFFICE_FORMATS,
     TEXT_FORMATS,
-    StorageType,
-    ParseMethod,
     ChunkerStrategy,
+    ParseMethod,
+    StorageType,
 )
-from src.utils.config import config
 from src.utils.doc_cache import DocumentCache
 from src.utils.helper import bootstrap_sparse_index, separate_content
 
@@ -43,9 +42,7 @@ class Processor:
         )
 
         self._cache = DocumentCache(
-            cache_dir=(
-                Path(cache_dir) if hasattr(config, "cache_dir") else config.CACHE_DIR
-            )
+            cache_dir=(Path(cache_dir) if hasattr(config, "cache_dir") else config.CACHE_DIR)
         )
 
         self.sparse_index = SparseSearchIndex()
@@ -132,9 +129,7 @@ class Processor:
         split_by_character: str | None = None,
     ):
         chunking_strategy = self._select_chunking_strategy(file_path)
-        logfire.info(
-            f"Starting chunking with strategy: {chunking_strategy} - {parse_method}"
-        )
+        logfire.info(f"Starting chunking with strategy: {chunking_strategy} - {parse_method}")
 
         chunking_config = ChunkingConfig(type=chunking_strategy, size=512, overlap=64)
 
@@ -224,9 +219,7 @@ class Processor:
         if len(content_list) == 0:
             raise ValueError("Parsing failed: No content extracted")
 
-        self._store_cache_result(
-            cache_key, content_list, file_path, parse_method.value, parser
-        )
+        self._store_cache_result(cache_key, content_list, file_path, parse_method.value, parser)
 
         doc_id = self._generate_doc_id(file_path)
 
@@ -234,7 +227,7 @@ class Processor:
             logfire.info("\n Content information: ")
             logfire.info(f"* Total content in list: {len(content_list)}")
 
-            block_types: Dict[str, int] = {}
+            block_types: dict[str, int] = {}
             for block in content_list:
                 if isinstance(block, dict):
                     block_type = block.get("type", "Unknown")
@@ -297,9 +290,7 @@ class Processor:
             "vectors_stored": len(embedded_chunks),
         }
 
-    async def query(
-        self, question: str, top_k: int = 5, doc_id_filter: str | None = None
-    ):
+    async def query(self, question: str, top_k: int = 5, doc_id_filter: str | None = None):
         if not question:
             raise ValueError("Please enter your question!")
 

@@ -1,8 +1,8 @@
 import asyncio
 import contextlib
 import sys
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Callable, Awaitable
 
 import logfire
 import uvicorn
@@ -25,14 +25,13 @@ from src.agents.retrieval import RetrievalAgent
 from src.api.routers.document_routes import create_document_routes
 from src.api.routers.query_router import create_query_routes
 from src.ingestion.embedding import EmbeddingService
-
 from src.llm.gemini import GeminiClient
 from src.llm.groq import GroqClient
 from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
 from src.utils.config import config
-from src.utils.helper import check_env, bootstrap_sparse_index
+from src.utils.helper import bootstrap_sparse_index, check_env
 
 
 @asynccontextmanager
@@ -105,12 +104,10 @@ async def lifespan(app: FastAPI):
         app.state.pipeline = pipeline
         app.state.pool = pool
 
-        rebuild_task = asyncio.create_task(
-            bootstrap_sparse_index(storage_service, sparse_index)
-        )
+        rebuild_task = asyncio.create_task(bootstrap_sparse_index(storage_service, sparse_index))
     except Exception:
         logfire.error("Startup failed; rolling back partially-initialized resources")
-        for name, close in reversed(closers):
+        for _name, close in reversed(closers):
             with contextlib.suppress(Exception):
                 await close()
         raise

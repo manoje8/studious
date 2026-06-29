@@ -44,10 +44,7 @@ class QueryRewriter:
         result = response.parsed_json
 
         if result["was_rewritten"]:
-            logfire.info(
-                f"Query rewritten: '{current_message}'"
-                f"-> '{result['rewritten_query']}'"
-            )
+            logfire.info(f"Query rewritten: '{current_message}'-> '{result['rewritten_query']}'")
 
             for ref in result["resolved_references"]:
                 logfire.info(f" Resolved: {ref}")

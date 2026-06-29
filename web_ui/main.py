@@ -3,9 +3,9 @@ import time
 import uuid
 from pathlib import Path
 
+import logfire
 import requests
 import streamlit as st
-import logfire
 from dotenv import load_dotenv
 
 from src.utils.constants import ParseMethod
@@ -131,14 +131,10 @@ if prompt := st.chat_input("Ask me anything!"):
                             "session_id": st.session_state.session_id,
                             "user_id": st.session_state.user_id,
                         }
-                        response = requests.post(
-                            url=query_url, json=payload, timeout=60
-                        )
+                        response = requests.post(url=query_url, json=payload, timeout=60)
                         data = response.json()
 
-                    status.update(
-                        label="Answer synthesized", state="complete", expanded=False
-                    )
+                    status.update(label="Answer synthesized", state="complete", expanded=False)
                     sources = data.get("sources", [])
 
                     if sources:
@@ -146,7 +142,7 @@ if prompt := st.chat_input("Ask me anything!"):
                             for i, source in enumerate(sources):
                                 preview = source[:100].replace("\n", " ") + "..."
 
-                                with st.expander(f"{i+1} -> {preview}"):
+                                with st.expander(f"{i + 1} -> {preview}"):
                                     st.info(source)
 
                 except Exception as e:

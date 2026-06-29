@@ -1,5 +1,7 @@
 import asyncio
+
 import logfire
+
 from src.agents.graph.state import State
 
 
@@ -43,9 +45,7 @@ class GraderAgent:
             retrieval_strategy=classification.get("retrieval_strategy", {}),
         )
 
-        relevance_ratio = (
-            len(graded_chunks) / len(accepted_chunks) if accepted_chunks else 0
-        )
+        relevance_ratio = len(graded_chunks) / len(accepted_chunks) if accepted_chunks else 0
 
         overall_score = self._calculate_overall_score(
             relevance_ratio=relevance_ratio,
@@ -83,9 +83,7 @@ class GraderAgent:
             "needs_refinement": need_refinement,
         }
 
-    async def _grade_chunks_batch(
-        self, chunks: list[dict], query: str, sub_questions: list[str]
-    ):
+    async def _grade_chunks_batch(self, chunks: list[dict], query: str, sub_questions: list[str]):
         """
         Grade all chunks in parallel for efficiency.
         Returns accepted chunks and grading metadata.
@@ -97,23 +95,19 @@ class GraderAgent:
         if not chunks:
             return [], {"rejected_reasons": []}
 
-        tasks = [
-            self._grade_single_chunk(chunk, query, sub_questions) for chunk in chunks
-        ]
+        tasks = [self._grade_single_chunk(chunk, query, sub_questions) for chunk in chunks]
 
         results = await asyncio.gather(*tasks)
 
         accepted = []
         rejected_reasons = []
 
-        for chunk, result in zip(chunks, results):
+        for chunk, result in zip(chunks, results, strict=False):
             if result["relevant"]:
                 chunk_copy = dict(chunk)
                 chunk_copy["grade_reason"] = result["reason"]
                 chunk_copy["relevance_score"] = result.get("score", 0.5)
-                chunk_copy["answers_sub_questions"] = result.get(
-                    "answers_sub_questions", []
-                )
+                chunk_copy["answers_sub_questions"] = result.get("answers_sub_questions", [])
                 accepted.append(chunk_copy)
 
             else:
@@ -134,9 +128,7 @@ class GraderAgent:
 
         return accepted, {"rejected_reasons": rejected_reasons}
 
-    async def _grade_single_chunk(
-        self, chunk: dict, query: str, sub_questions: list[str]
-    ):
+    async def _grade_single_chunk(self, chunk: dict, query: str, sub_questions: list[str]):
         """
         Grade a single chunk for relevance to the query and sub-questions.
         Returns detailed grading result.
@@ -222,20 +214,13 @@ Respond with JSON only:
                         covered_indices.add(answer)
                     elif isinstance(answer, str):
                         for i, sq in enumerate(sub_questions):
-                            if (
-                                answer.lower() in sq.lower()
-                                or sq.lower() in answer.lower()
-                            ):
+                            if answer.lower() in sq.lower() or sq.lower() in answer.lower():
                                 covered_indices.add(i)
 
         if len(covered_indices) < len(sub_questions) * 0.5:
-            covered_indices = await self._llm_assess_coverage(
-                graded_chunks, sub_questions, query
-            )
+            covered_indices = await self._llm_assess_coverage(graded_chunks, sub_questions, query)
 
-        coverage_score = (
-            len(covered_indices) / len(sub_questions) if sub_questions else 1.0
-        )
+        coverage_score = len(covered_indices) / len(sub_questions) if sub_questions else 1.0
 
         return min(coverage_score, 1.0)
 
@@ -421,9 +406,7 @@ Return JSON:
             "key_information": [],
         }
 
-    async def grade_chunks(
-        self, chunks: list[dict], original_question: str
-    ) -> list[dict]:
+    async def grade_chunks(self, chunks: list[dict], original_question: str) -> list[dict]:
         """
         Legacy method for simple per-chunk grading.
         Now delegates to the batch grader.

@@ -1,13 +1,14 @@
 import json
-import pytest
 import tempfile
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
-from src.storage.local_storage import LocalStorage
+import pytest
+
 from src.storage.gcp_storage import GoogleCloudStorage
+from src.storage.local_storage import LocalStorage
 from src.storage.storage_factory import StorageFactory
 from src.utils.constants import StorageType
 

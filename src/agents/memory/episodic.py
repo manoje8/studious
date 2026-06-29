@@ -115,8 +115,7 @@ class EpisodicMemoryManager:
             )
 
         logfire.info(
-            f"Saved episodic summary for user {summary.user_id}, "
-            f"session {summary.session_id}"
+            f"Saved episodic summary for user {summary.user_id}, session {summary.session_id}"
         )
 
     async def load_user_memory(self, user_id: str, limit: int = 5) -> str:

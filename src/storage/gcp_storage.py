@@ -59,9 +59,7 @@ class GoogleCloudStorage(BaseStorage):
 
     def list(self, prefix: str = "") -> list[str]:
         full_prefix = (
-            self._full_key(prefix)
-            if prefix
-            else (self.prefix + "/" if self.prefix else "")
+            self._full_key(prefix) if prefix else (self.prefix + "/" if self.prefix else "")
         )
         blobs = self.bucket.list_blobs(prefix=full_prefix)
         strip = (self.prefix + "/") if self.prefix else ""

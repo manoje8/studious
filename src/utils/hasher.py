@@ -1,6 +1,7 @@
 import hashlib
 from collections.abc import Callable
 from typing import Any
+
 import yaml
 
 Hasher = Callable[[str], str]
@@ -13,14 +14,12 @@ def sha256_hasher(data: str) -> str:
 
 
 def make_yaml_serializable(data: Any) -> Any:
-    if isinstance(data, (list, tuple)):
+    if isinstance(data, list | tuple):
         return [make_yaml_serializable(item) for item in data]
     if isinstance(data, set):
         return tuple(sorted(make_yaml_serializable(item) for item in data))
     if isinstance(data, dict):
-        return tuple(
-            sorted((key, make_yaml_serializable(value)) for key, value in data.items())
-        )
+        return tuple(sorted((key, make_yaml_serializable(value)) for key, value in data.items()))
 
     return str(data)
 

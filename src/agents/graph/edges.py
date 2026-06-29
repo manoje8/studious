@@ -2,7 +2,7 @@ import logfire
 
 from src.agents.graph.state import State
 
-GLOBAL_MAX_RETRIEVAL_STEPS = 8
+GLOBAL_MAX_RETRIEVAL_STEPS = 6
 
 
 def route_after_classify(state: State) -> str:

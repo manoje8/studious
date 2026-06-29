@@ -1,9 +1,9 @@
 import pickle
+from pathlib import Path
 
 import logfire
-from rank_bm25 import BM25Okapi
 import numpy as np
-from pathlib import Path
+from rank_bm25 import BM25Okapi
 
 BM25_CACHE_PATH = ".cache/sparse/bm25_index.pkl"
 

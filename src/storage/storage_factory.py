@@ -20,8 +20,6 @@ class StorageFactory:
         elif storage_type == StorageType.GCS.value:
             from src.storage.gcp_storage import GoogleCloudStorage
 
-            return GoogleCloudStorage(
-                bucket_name=config["bucket"], prefix=config.get("prefix", "")
-            )
+            return GoogleCloudStorage(bucket_name=config["bucket"], prefix=config.get("prefix", ""))
         else:
             raise ValueError(f"Unknown storage type: {storage_type}")

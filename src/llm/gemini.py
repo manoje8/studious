@@ -17,9 +17,7 @@ class GeminiClient(BaseLLM):
     def model_name(self) -> str:
         return self.model
 
-    async def _complete_impl(
-        self, prompt: str, max_tokens: int = 1024, **kwargs
-    ) -> LLMResponse:
+    async def _complete_impl(self, prompt: str, max_tokens: int = 1024, **kwargs) -> LLMResponse:
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
@@ -42,9 +40,7 @@ class GeminiClient(BaseLLM):
                 else "Unknown"
             )
             safety_rating = (
-                response.candidates[0].safety_ratings
-                if response and response.candidates
-                else "N/A"
+                response.candidates[0].safety_ratings if response and response.candidates else "N/A"
             )
 
             msg = (
@@ -58,12 +54,8 @@ class GeminiClient(BaseLLM):
 
         if hasattr(response, "usage_metadata"):
             token_usage = {
-                "prompt_tokens": getattr(
-                    response.usage_metadata, "prompt_token_count", 0
-                ),
-                "completion_tokens": getattr(
-                    response.usage_metadata, "candidates_token_count", 0
-                ),
+                "prompt_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
+                "completion_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
                 "total": getattr(response.usage_metadata, "total_token_count", 0),
             }
 

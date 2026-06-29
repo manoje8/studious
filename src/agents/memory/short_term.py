@@ -1,8 +1,8 @@
 import json
+from uuid import uuid4
 
 import logfire
 import redis.asyncio as redis
-from uuid import uuid4
 
 from src.agents.memory.conversation_model import ConversationSession, ConversationTurn
 from src.utils.config import config
@@ -23,9 +23,7 @@ class ShortTermMemoryManager:
             ],
         }
 
-        await self.redis.setex(
-            f"session:{session.session_id}", self.session_ttl, json.dumps(data)
-        )
+        await self.redis.setex(f"session:{session.session_id}", self.session_ttl, json.dumps(data))
 
     async def get_session(self, session_id: str) -> ConversationSession | None:
         data = await self.redis.get(f"session:{session_id}")
@@ -35,9 +33,7 @@ class ShortTermMemoryManager:
 
         raw = json.loads(data)
 
-        session = ConversationSession(
-            session_id=raw["session_id"], user_id=raw["user_id"]
-        )
+        session = ConversationSession(session_id=raw["session_id"], user_id=raw["user_id"])
 
         for turn_data in raw["turns"]:
             session.turns.append(

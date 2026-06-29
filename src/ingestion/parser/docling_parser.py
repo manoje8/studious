@@ -1,9 +1,10 @@
 import base64
-from concurrent.futures.thread import ThreadPoolExecutor
-from pathlib import Path
-from typing import Union, Optional, Dict, Tuple, Any, List
 import threading
+from concurrent.futures.thread import ThreadPoolExecutor
 from itertools import count
+from pathlib import Path
+from typing import Any
+
 import logfire
 from docling.datamodel.pipeline_options import TableFormerMode
 
@@ -19,11 +20,11 @@ class DoclingParser(Parser):
 
     def __init__(self):
         super().__init__()
-        self._converter_cache: Dict[Tuple, Any] = {}
+        self._converter_cache: dict[tuple, Any] = {}
         self._converter_cache_lock = threading.Lock()
         self._image_executor = ThreadPoolExecutor(max_workers=4)
 
-    def _get_page_idx(self, block: Dict[str, Any]) -> int:
+    def _get_page_idx(self, block: dict[str, Any]) -> int:
         """Extract real page index from Docling provenance data."""
         prov = block.get("prov", [])
         if prov and isinstance(prov, list):
@@ -82,9 +83,7 @@ class DoclingParser(Parser):
                 )
 
             converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-                }
+                format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
             )
 
             self._converter_cache[cache_key] = converter
@@ -97,8 +96,8 @@ class DoclingParser(Parser):
         output_dir: Path,
         counter,
         num: str,
-        docling_content: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        docling_content: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         """
         Recursively traverse the Docling document block tree.
 
@@ -148,9 +147,7 @@ class DoclingParser(Parser):
                 )
         return content_list
 
-    def _read_from_block(
-        self, block, type: str, output_dir: Path, num: str
-    ) -> Dict[str, Any]:
+    def _read_from_block(self, block, type: str, output_dir: Path, num: str) -> dict[str, Any]:
         page_idx = self._get_page_idx(block)
 
         if type == "texts":
@@ -214,8 +211,8 @@ class DoclingParser(Parser):
     def _parse_with_converter(
         self,
         file_path: Path,
-        output_dir: Optional[str],
-    ) -> List[Dict[str, Any]]:
+        output_dir: str | None,
+    ) -> list[dict[str, Any]]:
         """
         Shared core logic for all supported formats.
         Converts the document, traverses the block tree, and frees doc_dict immediately.
@@ -255,17 +252,16 @@ class DoclingParser(Parser):
             return True
         except ImportError:
             logfire.debug(
-                "Docling Python package is not installed. "
-                "Install it with: pip install docling"
+                "Docling Python package is not installed. Install it with: pip install docling"
             )
             return False
 
     def parse_doc(
         self,
-        file_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        file_path: str | Path,
+        output_dir: str | None = None,
         method: str = "auto",
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         try:
@@ -294,10 +290,10 @@ class DoclingParser(Parser):
 
     def parse_pdf(
         self,
-        file_path: Union[str, Path],
-        output_dir: Optional[str] = None,
+        file_path: str | Path,
+        output_dir: str | None = None,
         method: str = "auto",
-        lang: Optional[str] = None,
+        lang: str | None = None,
         **kwargs,
     ):
         try:
@@ -311,9 +307,7 @@ class DoclingParser(Parser):
             logfire.error(f"Error in parse pdf: {str(e)}")
             raise
 
-    def parse_html(
-        self, file_path: Union[str, Path], output_dir: Optional[str] = None, **kwargs
-    ):
+    def parse_html(self, file_path: str | Path, output_dir: str | None = None, **kwargs):
         try:
             html_path = Path(file_path)
             if not html_path.exists():
@@ -328,9 +322,7 @@ class DoclingParser(Parser):
             logfire.error(f"Error in parse html: {str(e)}")
             raise
 
-    def parse_office(
-        self, file_path: Union[str, Path], output_dir: Optional[str] = None, **kwargs
-    ):
+    def parse_office(self, file_path: str | Path, output_dir: str | None = None, **kwargs):
         try:
             file_path = Path(file_path)
             if not file_path.exists():

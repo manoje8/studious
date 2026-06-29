@@ -22,6 +22,22 @@ You are an enterprise-grade intent router for a RAG (Retrieval-Augmented Generat
 
 Current question: {question}
 
+ROUTING PRIORITY RULE:
+Classify based on the INTENT VERB first, the TOPIC ENTITY second.
+"Give me points about X" is always SUMMARIZATION regardless of what X is.
+When in doubt, the structure of the request outweighs the subject matter.
+
+INTENT SIGNAL MAPPING (apply before category matching):
+- "give me points / list points / bullet points / key points about X" → SUMMARIZATION
+- "what is / define / when did / who is / where is"                  → FACTUAL
+- "compare / vs / versus / difference between / which is better"      → COMPARATIVE
+- "why did / what caused / what if / how will X affect Y"            → ANALYTICAL
+- "how do I / steps to / guide me / process for / walk me through"   → PROCEDURAL
+- "summarize / tldr / overview / executive summary / recap"           → SUMMARIZATION
+- "tell me more / elaborate / what did you mean"                      → CLARIFICATION
+- "what can you do / who are you / what do you know"                  → META
+- greetings / farewells / small talk                                  → CHITCHAT
+
 CLASSIFICATION TAXONOMY:
 
 1. **FACTUAL** - Direct information retrieval
@@ -31,6 +47,12 @@ CLASSIFICATION TAXONOMY:
    - Attribution: "Who said X?", "Where is X located?"
    - Action: Single-pass retrieval, direct answer
    - Retrieval: 3-5 top chunks, low temperature
+
+   NOT FACTUAL if the question asks for:
+   - "points", "takeaways", "key findings", "highlights" → SUMMARIZATION
+   - "summary", "overview", "tell me about X in detail" → SUMMARIZATION
+   - multiple aspects or dimensions of a topic           → SUMMARIZATION or ANALYTICAL
+   - reasoning, causation, or implications               → ANALYTICAL
 
 2. **COMPARATIVE** - Multi-entity analysis
    - Explicit comparisons: "Compare X vs Y", "Difference between A and B"
@@ -49,13 +71,20 @@ CLASSIFICATION TAXONOMY:
    - Action: Chain-of-thought, multi-step retrieval
    - Retrieval: 8-12 chunks, high temperature, reasoning chains
 
-4. **SUMMARIZATION** - Content condensation
+4. **SUMMARIZATION** - Content condensation and point extraction
    - Overview: "Summarize X", "Give me an executive summary"
+   - Point extraction: "Give me points about X", "Key points on X",
+     "What are the main findings?", "List the highlights of X"
    - Recap: "What did we discuss?", "Summary of previous conversation"
-   - Extraction: "Key points from X", "Main takeaways"
+   - Extraction: "Key points from X", "Main takeaways", "TL;DR"
    - Document synthesis: "TL;DR of this document"
    - Action: Hierarchical summarization, extractive + abstractive
    - Retrieval: Full document context, low temperature
+
+   TRIGGER PHRASES that always route here regardless of topic:
+   - "give me points", "list points", "bullet points about"
+   - "key findings", "main takeaways", "highlights of"
+   - "what should I know about", "brief me on"
 
 5. **CHITCHAT** - Social interaction
    - Greetings: "Hello", "Hi", "Good morning"
@@ -142,15 +171,9 @@ Respond with EXACTLY this JSON format:
                         "needs_hybrid_search": result["retrieval_strategy"].get(
                             "needs_hybrid_search"
                         ),
-                        "needs_multi_hop": result["retrieval_strategy"].get(
-                            "needs_multi_hop"
-                        ),
-                        "target_chunks": result["retrieval_strategy"].get(
-                            "target_chunks"
-                        ),
-                        "requires_confirmation": result.get(
-                            "requires_confirmation", False
-                        ),
+                        "needs_multi_hop": result["retrieval_strategy"].get("needs_multi_hop"),
+                        "target_chunks": result["retrieval_strategy"].get("target_chunks"),
+                        "requires_confirmation": result.get("requires_confirmation", False),
                     }
                 )
 
@@ -162,9 +185,7 @@ Respond with EXACTLY this JSON format:
 
                 return result
             except Exception as e:
-                logfire.error(
-                    f"Error in classify_query: {str(e)}, " f"Using Fallback response"
-                )
+                logfire.error(f"Error in classify_query: {str(e)}, Using Fallback response")
                 return self._create_fallback_response()
 
     def _build_context_prompt(self, conversation_history: list) -> str:
@@ -174,9 +195,7 @@ Respond with EXACTLY this JSON format:
             return "No previous conversation context."
 
         context = "\nPrevious conversation turns:\n"
-        for i, turn in enumerate(
-            conversation_history[-self.config["context_window"] :], 1
-        ):
+        for i, turn in enumerate(conversation_history[-self.config["context_window"] :], 1):
             context += f"{i}. User: {turn.get('user', '')}\n"
             context += f"   Assistant: {turn.get('assistant', '')}\n"
 
@@ -185,7 +204,9 @@ Respond with EXACTLY this JSON format:
         context += f"- Turn depth for context: {min(len(conversation_history), self.config['context_window'])}\n"
 
         if len(conversation_history) > 0:
-            context += "- This appears to be a follow-up question that may reference previous context.\n"
+            context += (
+                "- This appears to be a follow-up question that may reference previous context.\n"
+            )
 
         return context
 
@@ -266,9 +287,7 @@ Respond with EXACTLY this JSON format:
             result["fallback_categories"] = ["factual", "analytical"]
 
         if result["primary_category"] == "procedural":
-            logfire.info(
-                "Procedural query detected — upgrading retrieval depth/chunking"
-            )
+            logfire.info("Procedural query detected — upgrading retrieval depth/chunking")
             result["retrieval_strategy"]["chunking_strategy"] = "large"
             result["retrieval_strategy"]["max_retrieval_depth"] = 3
 

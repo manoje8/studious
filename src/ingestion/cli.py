@@ -1,6 +1,6 @@
 import argparse
-import json
 import asyncio
+import json
 from pathlib import Path
 
 import logfire
@@ -32,9 +32,7 @@ def parse_args():
         "ingest",
         help="Parse, embed, and store a document in Qdrant.",
     )
-    ingest_parser.add_argument(
-        "file_path", type=str, help="Path to the input document."
-    )
+    ingest_parser.add_argument("file_path", type=str, help="Path to the input document.")
     ingest_parser.add_argument("--parse-method", type=str, default=None)
     ingest_parser.add_argument("--split-by-character", type=str, default=None)
 

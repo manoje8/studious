@@ -8,12 +8,13 @@ Covers:
   search(), scroll_all_chunks()
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.services.sparse_index import SparseSearchIndex
-from src.services.reranker import Reranker
+import pytest
+
 from src.services.qdrant import QdrantStorageService
+from src.services.reranker import Reranker
+from src.services.sparse_index import SparseSearchIndex
 
 # SparseSearchIndex
 
@@ -110,9 +111,7 @@ class TestSparseSearchIndex:
     def test_rebuild_replaces_old_index(self, chunks):
         index = SparseSearchIndex()
         index.build(chunks)
-        new_chunks = [
-            {"text": "brand new content here", "doc_id": "d3", "chunk_index": 0}
-        ]
+        new_chunks = [{"text": "brand new content here", "doc_id": "d3", "chunk_index": 0}]
         index.build(new_chunks)
         assert index.chunks == new_chunks
 
@@ -281,9 +280,7 @@ class TestQdrantStorageService:
         mock_client.create_collection.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_validate_vector_dimension_mismatch_raises(
-        self, service, mock_client
-    ):
+    async def test_validate_vector_dimension_mismatch_raises(self, service, mock_client):
         info = MagicMock()
         info.config.params.vectors.size = 99  # Wrong dimension
         mock_client.get_collection.return_value = info
@@ -316,9 +313,7 @@ class TestQdrantStorageService:
         return _make
 
     @pytest.mark.asyncio
-    async def test_upsert_calls_ensure_collection(
-        self, service, mock_client, make_embedded_chunk
-    ):
+    async def test_upsert_calls_ensure_collection(self, service, mock_client, make_embedded_chunk):
         mock_client.collection_exists.return_value = True
         info = MagicMock()
         info.config.params.vectors.size = 4
@@ -330,9 +325,7 @@ class TestQdrantStorageService:
         mock_client.collection_exists.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_upsert_batches_correctly(
-        self, service, mock_client, make_embedded_chunk
-    ):
+    async def test_upsert_batches_correctly(self, service, mock_client, make_embedded_chunk):
         """With batch_size=2 and 5 chunks → 3 upsert calls."""
         mock_client.collection_exists.return_value = False
 
@@ -342,9 +335,7 @@ class TestQdrantStorageService:
         assert mock_client.upsert.await_count == 3  # ceil(5/2)
 
     @pytest.mark.asyncio
-    async def test_upsert_propagates_exception(
-        self, service, mock_client, make_embedded_chunk
-    ):
+    async def test_upsert_propagates_exception(self, service, mock_client, make_embedded_chunk):
         mock_client.collection_exists.return_value = False
         mock_client.upsert.side_effect = RuntimeError("Connection failed")
 

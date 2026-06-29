@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -14,7 +12,7 @@ class QueryRequest(BaseModel):
     is_multi_retriever: bool = False
 
 
-def create_query_routes(api_key: Optional[str] = None, top_k: int = 60):
+def create_query_routes(api_key: str | None = None, top_k: int = 60):
     router = APIRouter(tags=["query"])
 
     @router.post("/query")

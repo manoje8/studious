@@ -36,9 +36,7 @@ class AgenticRAG:
         classification = await self.router.classify(question)
         logfire.info(f"Router: {classification['category']}")
 
-        state.sub_questions = await self.planner.decompose(
-            question, classification["category"]
-        )
+        state.sub_questions = await self.planner.decompose(question, classification["category"])
 
         logfire.info(f"Planner sub questions: {json.dumps(state.sub_questions)}")
 
@@ -65,9 +63,7 @@ class AgenticRAG:
                 if round_result.chunk_retrieved:
                     last_round_chunks = round_result.chunk_retrieved
 
-                logfire.info(
-                    f"Round result retrieval decision: {round_result.decision}"
-                )
+                logfire.info(f"Round result retrieval decision: {round_result.decision}")
 
                 if round_result.decision == RetrievalDecision.SUFFICIENT:
                     state.accepted_chunks.extend(round_result.chunk_retrieved)
@@ -110,9 +106,7 @@ class AgenticRAG:
 
         logfire.info(f"Grading {len(state.accepted_chunks)} total chunks")
 
-        state.accepted_chunks = await self.grader.grade_chunks(
-            state.accepted_chunks, question
-        )
+        state.accepted_chunks = await self.grader.grade_chunks(state.accepted_chunks, question)
 
         logfire.info("Synthesizing final answer")
         state.final_answer = await self.synthesizer.synthesize(state)

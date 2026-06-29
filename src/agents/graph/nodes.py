@@ -1,3 +1,5 @@
+import logfire
+
 from src.agents.graph.state import State
 
 
@@ -28,9 +30,7 @@ async def route(state: State, router) -> dict:
 
 # Planner
 async def plan(state: State, planner) -> dict:
-    sub_qs = await planner.decompose(
-        state["effective_query"], state["question_category"]
-    )
+    sub_qs = await planner.decompose(state["effective_query"], state["question_category"])
 
     return {
         "sub_questions": sub_qs,
@@ -75,6 +75,8 @@ async def refine_query(state: State, retrieval_agent) -> dict:
             original_question=state["sub_questions"][state["current_sub_question_idx"]],
             previous_rounds=state["retrieval_history"],
         )
+    else:
+        logfire.debug("refine_query is not found. Skipping...")
 
     return {"current_query": refined}
 

@@ -1,10 +1,11 @@
 import gzip
 import json
-from pathlib import Path
-from typing import Optional
 from datetime import datetime, timezone
-from .config import config
+from pathlib import Path
+
 import logfire
+
+from .config import config
 
 
 class DocumentCache:
@@ -39,7 +40,7 @@ class DocumentCache:
             json.dumps(self._manifest, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    def get(self, cache_key: str) -> Optional[list[dict]]:
+    def get(self, cache_key: str) -> list[dict] | None:
         entry = self._manifest.get(cache_key)
 
         if entry is None:
@@ -55,15 +56,11 @@ class DocumentCache:
             with gzip.open(cache_file, "rt", encoding="utf-8") as f:
                 content_list = json.load(f)
 
-            logfire.info(
-                f"Cache HIT - key={cache_key[:8]}… file={entry['source_file']}"
-            )
+            logfire.info(f"Cache HIT - key={cache_key[:8]}… file={entry['source_file']}")
             return content_list
 
         except (OSError, json.JSONDecodeError) as e:
-            logfire.warning(
-                f"Cache - Corrupted entry {cache_key[:8]}…, evicting. Error: {e}"
-            )
+            logfire.warning(f"Cache - Corrupted entry {cache_key[:8]}…, evicting. Error: {e}")
             self._evict(cache_key)
             return None
 
@@ -106,9 +103,7 @@ class DocumentCache:
         """
 
         state_keys = [
-            k
-            for k, v in self._manifest.items()
-            if v.get("source_file") == str(file_path)
+            k for k, v in self._manifest.items() if v.get("source_file") == str(file_path)
         ]
 
         for key in state_keys:
