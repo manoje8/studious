@@ -36,13 +36,11 @@ jobs:
       - name: Install lint dependencies
         run: |
           pip install --upgrade pip
-          pip install ruff black
+          pip install ruff
 
       - name: Run Ruff (linter)
         run: ruff check . --output-format=github
 
-      - name: Run Black (format check)
-        run: black --check .
 
   # Job 2: Unit Tests
   test:

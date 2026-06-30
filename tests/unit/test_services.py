@@ -6,6 +6,8 @@ Covers:
 - Reranker: rerank() happy path, empty candidates, fallback on failure
 - QdrantStorageService: ensure_collection_exists(), upsert_embedded_chunks(),
   search(), scroll_all_chunks()
+- QdrantStorageService retry logic: transient failures trigger retries (tenacity)
+- QdrantStorageService.ping() and /health endpoint
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -336,12 +338,16 @@ class TestQdrantStorageService:
 
     @pytest.mark.asyncio
     async def test_upsert_propagates_exception(self, service, mock_client, make_embedded_chunk):
+        """After all retries are exhausted the original exception is re-raised."""
         mock_client.collection_exists.return_value = False
         mock_client.upsert.side_effect = RuntimeError("Connection failed")
 
         chunks = [make_embedded_chunk()]
         with pytest.raises(RuntimeError, match="Connection failed"):
             await service.upsert_embedded_chunks(chunks)
+
+        # tenacity retries 3 times total before re-raising
+        assert mock_client.upsert.await_count == 3
 
     # --- search ---
 
@@ -456,3 +462,218 @@ class TestQdrantStorageService:
 
         assert len(results) == 2
         assert mock_client.scroll.await_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Retry logic
+# ---------------------------------------------------------------------------
+
+
+class TestQdrantRetry:
+    """Verify tenacity retry is wired into Qdrant calls."""
+
+    @pytest.fixture
+    def mock_client(self):
+        with (
+            patch("src.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("src.services.qdrant.config") as mock_config,
+            patch("src.services.qdrant.logfire"),
+        ):
+            mock_config.QDRANT_COLLECTION_NAME = "test_collection"
+            mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
+            mock_config.QDRANT_API_KEY = "key"
+            mock_qdrant = AsyncMock()
+            mock_cls.return_value = mock_qdrant
+            yield mock_qdrant
+
+    @pytest.fixture
+    def service(self, mock_client):
+        return QdrantStorageService(
+            url="http://localhost:6333",
+            collection_name="test_collection",
+            vector_size=4,
+            upsert_batch_size=10,
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_retries_on_transient_error(self, service, mock_client):
+        """search() retries up to 3 times before re-raising."""
+        mock_client.query_points.side_effect = OSError("timeout")
+
+        with pytest.raises(OSError, match="timeout"):
+            await service.search(query_vector=[0.1, 0.2, 0.3, 0.4])
+
+        assert mock_client.query_points.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_search_succeeds_on_first_try_calls_once(self, service, mock_client):
+        """When no error occurs, the underlying client is called exactly once."""
+        result_mock = MagicMock()
+        result_mock.points = []
+        mock_client.query_points.return_value = result_mock
+
+        await service.search(query_vector=[0.1, 0.2, 0.3, 0.4])
+
+        assert mock_client.query_points.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_scroll_retries_on_transient_error(self, service, mock_client):
+        """scroll_all_chunks() retries its first page call 3 times."""
+        mock_client.scroll.side_effect = OSError("network blip")
+
+        with pytest.raises(OSError, match="network blip"):
+            await service.scroll_all_chunks()
+
+        assert mock_client.scroll.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_chunk_count_retries_on_transient_error(self, service, mock_client):
+        """chunk_count() retries 3 times before propagating."""
+        mock_client.count.side_effect = OSError("unreachable")
+
+        with pytest.raises(OSError, match="unreachable"):
+            await service.chunk_count()
+
+        assert mock_client.count.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_retry_succeeds_on_second_attempt(self, service, mock_client):
+        """A transient failure on the first attempt is recovered by the second."""
+        result_mock = MagicMock()
+        result_mock.points = []
+        mock_client.query_points.side_effect = [
+            OSError("transient"),  # first attempt fails
+            result_mock,  # second attempt succeeds
+        ]
+
+        results = await service.search(query_vector=[0.1, 0.2, 0.3, 0.4])
+
+        assert mock_client.query_points.await_count == 2
+        assert results == []
+
+
+# ---------------------------------------------------------------------------
+# ping() and /health endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestQdrantPing:
+    """Tests for QdrantStorageService.ping()."""
+
+    @pytest.fixture
+    def mock_client(self):
+        with (
+            patch("src.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("src.services.qdrant.config") as mock_config,
+            patch("src.services.qdrant.logfire"),
+        ):
+            mock_config.QDRANT_COLLECTION_NAME = "test_collection"
+            mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
+            mock_config.QDRANT_API_KEY = "key"
+            mock_qdrant = AsyncMock()
+            mock_cls.return_value = mock_qdrant
+            yield mock_qdrant
+
+    @pytest.fixture
+    def service(self, mock_client):
+        return QdrantStorageService(
+            url="http://localhost:6333",
+            collection_name="test_collection",
+            vector_size=4,
+        )
+
+    @pytest.mark.asyncio
+    async def test_ping_returns_true_when_reachable(self, service, mock_client):
+        mock_client.get_collections.return_value = MagicMock()
+
+        result = await service.ping()
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_ping_returns_false_when_unreachable(self, service, mock_client):
+        mock_client.get_collections.side_effect = OSError("refused")
+
+        result = await service.ping()
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_ping_attempts_retries_before_returning_false(self, service, mock_client):
+        """ping() retries via tenacity so 3 attempts are made before returning False."""
+        mock_client.get_collections.side_effect = OSError("refused")
+
+        result = await service.ping()
+
+        assert result is False
+        assert mock_client.get_collections.await_count == 3
+
+
+class TestHealthEndpoint:
+    """/health endpoint: 200 when Qdrant is up, 503 when it is not."""
+
+    @pytest.fixture
+    def fast_app(self):
+        """Bare FastAPI app with the /health route, no lifespan overhead."""
+        from fastapi import FastAPI
+        from fastapi.requests import Request
+        from fastapi.responses import JSONResponse
+
+        app = FastAPI()
+
+        @app.get("/health")
+        async def health(request: Request):
+            qdrant_service = getattr(request.app.state, "qdrant", None)
+            qdrant_ok = False
+            if qdrant_service is not None:
+                qdrant_ok = await qdrant_service.ping()
+            deps = {"qdrant": "ok" if qdrant_ok else "unreachable"}
+            overall = "ok" if all(v == "ok" for v in deps.values()) else "degraded"
+            return JSONResponse(
+                status_code=200 if overall == "ok" else 503,
+                content={"status": overall, "dependencies": deps},
+            )
+
+        return app
+
+    def _make_service(self, ping_result: bool):
+        svc = MagicMock(spec=QdrantStorageService)
+        svc.ping = AsyncMock(return_value=ping_result)
+        return svc
+
+    @pytest.mark.asyncio
+    async def test_health_ok_when_qdrant_up(self, fast_app):
+        from httpx import ASGITransport, AsyncClient
+
+        fast_app.state.qdrant = self._make_service(ping_result=True)
+        async with AsyncClient(transport=ASGITransport(app=fast_app), base_url="http://test") as ac:
+            resp = await ac.get("/health")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "ok"
+        assert body["dependencies"]["qdrant"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_health_degraded_when_qdrant_down(self, fast_app):
+        from httpx import ASGITransport, AsyncClient
+
+        fast_app.state.qdrant = self._make_service(ping_result=False)
+        async with AsyncClient(transport=ASGITransport(app=fast_app), base_url="http://test") as ac:
+            resp = await ac.get("/health")
+
+        assert resp.status_code == 503
+        body = resp.json()
+        assert body["status"] == "degraded"
+        assert body["dependencies"]["qdrant"] == "unreachable"
+
+    @pytest.mark.asyncio
+    async def test_health_degraded_when_no_qdrant_in_state(self, fast_app):
+        """If qdrant is absent from app.state (e.g. startup failed) → 503."""
+        from httpx import ASGITransport, AsyncClient
+
+        async with AsyncClient(transport=ASGITransport(app=fast_app), base_url="http://test") as ac:
+            resp = await ac.get("/health")
+
+        assert resp.status_code == 503
+        assert resp.json()["status"] == "degraded"

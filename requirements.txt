@@ -19,6 +19,7 @@ google-cloud-documentai
 cloud-sql-python-connector
 
 qdrant-client
+tenacity
 flashrank
 redis
 redisvl
@@ -58,3 +59,5 @@ pre-commit
 
 ascii_colors
 pyyaml
+
+tenacity

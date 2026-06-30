@@ -8,6 +8,8 @@ import logfire
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -31,7 +33,7 @@ from src.services.qdrant import QdrantStorageService
 from src.services.reranker import Reranker
 from src.services.sparse_index import SparseSearchIndex
 from src.utils.config import config
-from src.utils.helper import bootstrap_sparse_index, check_env
+from src.utils.helper import bootstrap_sparse_index, check_env, has_internet
 
 
 @asynccontextmanager
@@ -103,6 +105,7 @@ async def lifespan(app: FastAPI):
         pipeline = GraphPipeline(graph, short_term_memory=short_term)
         app.state.pipeline = pipeline
         app.state.pool = pool
+        app.state.qdrant = storage_service
 
         rebuild_task = asyncio.create_task(bootstrap_sparse_index(storage_service, sparse_index))
     except Exception:
@@ -149,6 +152,22 @@ def create_apps():
     def root():
         return "running"
 
+    @app.get("/health", tags=["observability"])
+    async def health(request: Request):
+        qdrant_ok = False
+        qdrant_service: QdrantStorageService | None = getattr(request.app.state, "qdrant", None)
+        if qdrant_service is not None:
+            qdrant_ok = await qdrant_service.ping()
+
+        deps = {"qdrant": "ok" if qdrant_ok else "unreachable"}
+        overall = "ok" if all(v == "ok" for v in deps.values()) else "degraded"
+
+        status_code = 200 if overall == "ok" else 503
+        return JSONResponse(
+            status_code=status_code,
+            content={"status": overall, "service": config.PROJECT_NAME, "dependencies": deps},
+        )
+
     app.include_router(create_document_routes())
     app.include_router(create_query_routes())
 
@@ -156,7 +175,7 @@ def create_apps():
 
 
 def main():
-    logfire.configure(service_name=config.PROJECT_NAME)
+    logfire.configure(service_name=config.PROJECT_NAME, send_to_logfire=has_internet())
 
     if not check_env():
         sys.exit(1)

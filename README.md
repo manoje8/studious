@@ -1,97 +1,90 @@
-# Studious — Agentic Retrieval-Augmented Generation
+# Studious - Agentic Retrieval-Augmented Generation
 
-> A production-grade, agentic RAG pipeline built with FastAPI, Qdrant, Google Document AI, and Vertex AI embeddings. Designed for intelligent document ingestion, hybrid search, query expansion, and LLM-powered answer synthesis.
+> A production-grade, agentic RAG pipeline built with FastAPI, LangGraph, Qdrant, Google Document AI, and Vertex AI embeddings. Designed for intelligent document ingestion, hybrid search, query expansion, multi-turn memory, and LLM-powered answer synthesis.
 
 ---
 
 ## Overview
 
-**Studious** is a learning project that demonstrates how to build a sophisticated, agentic Retrieval-Augmented Generation system from the ground up. It goes well beyond a naive RAG setup by incorporating:
+**Studious** is an advanced Retrieval-Augmented Generation system that goes well beyond a naïve RAG setup. It is orchestrated by a **LangGraph state machine** that routes each query through a chain of specialised agents planning, retrieving, evaluating, grading, and synthesising with full multi-turn memory and self-correcting retrieval loops.
 
-- **Agentic retrieval loops** — a multi-agent system evaluates retrieval quality, decomposes complex questions, grades individual chunks, and self-corrects before synthesizing an answer.
-- **Hybrid search** — fuses dense (Qdrant cosine) and sparse (BM25) rankings via Reciprocal Rank Fusion (RRF). *(BM25 path is currently disabled pending integration.)*
-- **Query expansion** — LLM-generated query variants improve recall across multiple search passes.
-- **Cross-encoder re-ranking** — FlashRank re-scores candidates for precision.
-- **Multi-format document parsing** — PDFs, Office documents, and HTML via Google Document AI.
-- **Three chunking strategies** — structure-aware, fixed-size with overlap, and a basic paragraph splitter, each with per-chunk metadata.
-- **Document parse caching** — filesystem-backed gzip cache avoids redundant Document AI calls for unchanged files.
+### What makes it "agentic"?
+
+- The **Router** classifies questions into seven categories and selects the optimal execution path.
+- The **Planner** decomposes complex questions into 2–4 focused sub-questions.
+- The **RetrievalAgent** evaluates its own results and autonomously decides whether to refine the query, expand the search, or declare the context sufficient up to a configurable maximum number of rounds.
+- The **Grader** post-filters retrieved chunks for relevance before synthesis.
+- The **Synthesizer** selects from seven category-specific prompt strategies and enforces source citations.
 
 ---
 
 ## Architecture
 
-### Ingestion Flow
+### Ingestion Pipeline
 
 ```
-Raw File (PDF / DOCX / HTML)
-        ↓
-    Google Document AI Parser
-        ↓
-  content_list  [block1, block2 … block_n]
-        ↓
-    ┌─ Cache Check ─┐
-    │  HIT → return  │
-    │  MISS → parse  │
-    └────────────────┘
-        ↓
-    Chunker  (structure | fixed | splitter)
-        ↓
-  chunks = [chunk1, chunk2 … chunk_m]
-  each chunk = { text, metadata }
-        ↓
-  Embedding Model  (Vertex AI text-embedding-004)
-        ↓
-  vectors = [vec1, vec2 … vec_m]
-        ↓
-  Qdrant Upsert  (batched, idempotent via UUID5)
+Raw File  (PDF / DOCX / PPTX / HTML / XLS)
+        │
+        ▼
+Google Document AI Parser
+  └── filesystem gzip cache (avoids redundant API calls)
+        │
+        ▼
+Chunker  ─── strategy: structure | fixed | splitter
+  each chunk = { text, section_title, block_types, page_range, doc_id, … }
+        │
+        ▼
+EmbeddingService  (Vertex AI text-embedding-004, batched)
+        │
+        ▼
+QdrantStorageService.upsert_embedded_chunks()
+  └── deterministic UUID5 point IDs  →  idempotent re-ingestion
+  └── tenacity retry (3 attempts, exponential back-off + jitter)
 ```
 
-### Agentic Graph Flow
+### Agentic Query Graph (LangGraph)
 
 ```
-                        ┌─────────────────────────────────────────┐
-  user_message ─────►   │            ENTRY: rewrite_query         │
-                        └──────────────────┬──────────────────────┘
-                                           │
-                        ┌──────────────────▼──────────────────────┐
-                        │              route                      │
-                        │  (RouterAgent.classify)                 │
-                        └──┬───────────────┬───────────────┬──────┘
-                           │               │               │
-                     factual          analytical      summarization
-                           │               │               │
-                        ┌──▼───────────────▼───────────────▼──────┐
-                        │              plan                       │
-                        │  (PlannerAgent.decompose)               │
-                        └──────────────────┬──────────────────────┘
-                                           │  [sub_questions]
-                        ┌──────────────────▼────────────────────── ┐
-                        │          retrieve  (per sub-q)           │
-                        │  HybridSearch → Reranker → Evaluate      │
-                        └──┬───────────────────────────────────────┘
-                           │
-              ┌────────────┼──────────────────┐
-         sufficient    refine_query      exhausted
-              │            │                  │
-              │     ┌──────▼──────┐           │
-              │     │  refine     │───────────►│
-              │     └─────────────┘           │
-              └────────────┬──────────────────┘
-                           │
-                        ┌──▼──────────────────────────────────────┐
-                        │              grade                      │
-                        │  (GraderAgent.grade_chunks)             │
-                        └──────────────────┬──────────────────────┘
-                                           │
-                        ┌──────────────────▼──────────────────────┐
-                        │            synthesize                   │
-                        │  (SynthesizerAgent.synthesize)          │
-                        └──────────────────┬──────────────────────┘
-                                           │
-                                        END
+user_message
+    │
+    ▼
+rewrite_query  ── ShortTermMemory (Redis) resolves coreferences
+    │
+    ▼
+route  ── RouterAgent classifies: factual | comparative | analytical |
+    │      summarization | procedural | clarification | chitchat | meta
+    │
+    ├── chitchat / meta  ──────────────────────► handle_simple_response ─► END
+    │
+    ├── factual (low complexity)  ────────────► direct_synthesize ────────► END
+    │
+    └── all other categories
+            │
+            ▼
+           plan  ── PlannerAgent decomposes into sub-questions
+            │
+            ▼
+         retrieve  ◄──────────────────────────────────────────────┐
+            │  RetrievalAgent:                                     │
+            │   1. QueryExpander  →  3 LLM-derived query variants  │
+            │   2. HybridSearch   →  dense (Qdrant) + BM25 + RRF   │
+            │   3. Reranker       →  FlashRank cross-encoder        │
+            │   4. Self-evaluate: sufficient | refine | expand      │
+            │                                                       │
+            ├── refine_query  ─────────────────────────────────────┘
+            │
+            ├── next_sub_question  (loops over sub-questions)
+            │
+            └── grade  ── GraderAgent filters accepted chunks
+                    │
+                    ▼
+                synthesize  ── SynthesizerAgent (7 prompt strategies,
+                    │           XML-delimited context, citation enforcement)
+                    │
+                   END
 ```
 
-\* *BM25 sparse search is implemented but commented out in `hybrid_search.py` pending runtime integration.*
+> **Global safety valve:** A `GLOBAL_MAX_RETRIEVAL_STEPS = 6` hard cap prevents runaway loops regardless of individual round limits.
 
 ---
 
@@ -100,78 +93,85 @@ Raw File (PDF / DOCX / HTML)
 | Layer | Technology |
 |---|---|
 | **API** | FastAPI + Uvicorn |
-| **LLM Providers** | Groq (LangChain ChatGroq), Google Gemini (google-genai SDK) |
-| **Vector Store** | Qdrant (async client, cosine similarity) |
-| **Sparse Search** | BM25 (rank-bm25) — in-memory, built at ingestion |
-| **Re-ranking** | FlashRank (cross-encoder, CPU-friendly, lazy-initialized) |
+| **Graph Orchestration** | LangGraph (`StateGraph`) |
+| **Graph Checkpointing** | LangGraph Postgres checkpointer (psycopg async pool) |
+| **LLM Providers** | Groq (`llama-3.3-70b-versatile`), Google Gemini (`gemini-2.5-flash-lite`), Cerebras |
+| **Vector Store** | Qdrant (async client, cosine similarity, UUID5 idempotent IDs) |
+| **Sparse Search** | BM25 (rank-bm25) in-memory, rebuilt at startup |
+| **Fusion** | Reciprocal Rank Fusion (RRF) |
+| **Re-ranking** | FlashRank (cross-encoder, CPU-friendly, lazy-initialised) |
 | **Parsing** | Google Document AI (PDF, HTML, Office formats) |
 | **Embeddings** | Google Vertex AI `text-embedding-004` (batched, configurable dimensions) |
-| **Caching** | Filesystem gzip cache with JSON manifest (`DocumentCache`) |
-| **Observability** | Logfire (tracing + structured logs) |
-| **Dev Tools** | Ruff, Black, pre-commit, uv |
+| **Short-term Memory** | Redis (2-hour TTL session store) |
+| **Long-term Memory** | PostgreSQL `episodic_memories` table (LLM-compressed summaries) |
+| **Retry / Resilience** | tenacity (3 attempts, exponential back-off + jitter on all Qdrant calls) |
+| **Parse Cache** | Filesystem gzip cache with JSON manifest (`DocumentCache`) |
+| **Observability** | Logfire (structured traces), LangSmith (optional) |
+| **Dev Tools** | Ruff, pre-commit |
 | **Build** | setuptools via `pyproject.toml` |
 
 ---
 
 ## Key Features
 
-### 🤖 Five-Agent Agentic Pipeline
-The query pipeline orchestrates five specialized agents — **Router**, **Planner**, **Retriever**, **Grader**, and **Synthesizer** — that collaborate to classify questions, decompose complex queries, retrieve and evaluate evidence, filter noise, and generate cited answers.
+### 1. LangGraph Agentic Orchestration
+The entire query pipeline is a compiled `StateGraph` with typed `State`, conditional edges, and a PostgreSQL-backed checkpointer for durable conversation threads across restarts.
 
-### 🔍 Hybrid Search with RRF
-Combines dense vector similarity (Qdrant cosine) and sparse keyword retrieval (BM25) across all expanded query variants. Results are merged with Reciprocal Rank Fusion to produce a single ranked candidate list.
+### 2. Hybrid Search with RRF
+Dense vector search (Qdrant cosine similarity) and sparse keyword retrieval (BM25) run per query variant. Results are fused with Reciprocal Rank Fusion, then re-scored by a FlashRank cross-encoder.
 
-### 🔄 Self-Correcting Retrieval Loop
-The `RetrievalAgent` evaluates its own retrieved chunks against the original question and decides autonomously whether the context is `sufficient`, needs `refine_query`, `expand_search`, or is `exhausted`. When exhausted or at max rounds, it falls back to best-effort chunks rather than returning nothing.
+### 3. Self-Correcting Retrieval Loop
+`RetrievalAgent` evaluates its own retrieved chunks against the sub-question and returns one of four decisions: `sufficient`, `refine_query`, `expand_search`, or `exhausted`. The graph reacts accordingly, up to `MAX_RETRIEVAL_ROUND` per sub-question and a global 6-step budget.
 
-### 📄 Multi-Format Document Parsing
-Supports PDF, HTML, DOCX, PPTX, XLS/XLSX, and more. Google Document AI provides layout-aware parsing with block-level type metadata (heading, paragraph, table).
+### 4. Dual Memory System
+- **Short-term** Redis-backed session store (2-hour TTL). `QueryRewriter` uses the last N turns to resolve coreferences in follow-up questions ("it", "that document", etc.).
+- **Long-term (Episodic)** LLM compresses completed sessions into concise summaries with topic tags stored in PostgreSQL. Retrieved and injected into future sessions for the same user.
 
-### ✂️ Three Chunking Strategies
-- **Structure** — splits at document headings and isolates tables as standalone chunks, preserving section context and block-type metadata.
-- **Fixed** — token-window chunking with configurable size and overlap, suitable for unstructured or continuous text.
-- **Splitter** — basic paragraph-level splitting by character delimiter.
+### 5. Prompt-Injection Firewall
+All retrieved document chunks are wrapped in `<retrieved_context>` XML tags before being embedded in LLM prompts. Every retrieval-dependent prompt begins with a mandatory system rule instructing the model to treat that content as untrusted plain text and never follow instructions found within it.
 
-### 🔀 Query Expansion
-The LLM generates three semantically equivalent query variants before search, dramatically improving recall for ambiguous or technical questions.
+### 6. Qdrant Resilience (tenacity)
+Every Qdrant I/O call (`upsert`, `search`, `scroll`, `chunk_count`, `ping`) is wrapped in an async tenacity retry with 3 attempts, exponential back-off starting at 1 s (capped at 10 s), and per-attempt jitter. Retry attempts are logged as warnings via Logfire.
 
-### 💾 Document Parse Caching
-Parsed results are cached as gzip-compressed JSON with a manifest file. Cache keys incorporate file path, modification time, and parser config — unchanged files are never re-parsed.
+### 7. Multi-Format Document Parsing
+Google Document AI provides layout-aware block extraction (heading, paragraph, table) for PDF, HTML, DOCX, PPTX, XLS/XLSX. Parse results are cached as gzip-compressed JSON keyed by file path + mtime + parser config.
 
-### 📊 Observability with Logfire
-All pipeline stages — parsing, chunking, embedding, search, retrieval decisions — are instrumented with Logfire structured traces for end-to-end visibility.
+### 8. Three Chunking Strategies
+| Strategy | Description |
+|---|---|
+| `structure` | Splits at heading boundaries; isolates tables as standalone chunks; preserves section context |
+| `fixed` | Token-window chunking with configurable size and overlap |
+| `splitter` | Paragraph-level splitting by character delimiter |
+
+### 9. Health-Check Endpoint
+`GET /health` pings Qdrant and returns structured JSON with per-dependency status. Returns `HTTP 200` (`status: ok`) when all dependencies are reachable, `HTTP 503` (`status: degraded`) otherwise. Suitable for load-balancer or Kubernetes liveness probes.
 
 ---
+
 
 ## Getting Started
 
 ### Prerequisites
 
 - Python 3.10+
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
 - A running **Qdrant** instance (local Docker or Qdrant Cloud)
+- A **Redis** instance (local Docker or managed)
+- A **PostgreSQL** database (for LangGraph checkpointing + episodic memory)
 - Google Cloud project with **Document AI** and **Vertex AI** APIs enabled
-- A **Groq** API key (or Gemini API key) for LLM inference
+- A **Groq** API key and/or **Gemini** API key
 
 ### Installation
 
 ```bash
-# Clone the repo
-git clone <repo-url>
+git clone https://github.com/manoje8/studious.git
 cd advanced_rag
 
-# Create virtual environment and install
-uv venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# Install the package in editable mode
+pip install -r requirements.txt
 pip install -e .
-```
 
-### Pre-commit Hooks
-
-```bash
 pre-commit install
 ```
 
@@ -179,19 +179,22 @@ pre-commit install
 
 ## Configuration
 
-Create a `.env` file in the project root (see all available settings in `src/utils/config.py`):
+Copy `.env.example` to `.env` and fill in your values (all settings are in `src/utils/config.py`):
 
 ```env
 # Project
 PROJECT_NAME=studious
 HOST=localhost
 PORT=8000
+CORS_ORIGINS=http://localhost:3000
 
 # Google Cloud
 PROJECT_ID=<your-gcp-project>
 LOCATION=<gcp-region>
 GCP_DOC_AI_LOCATION=<doc-ai-region>
 GCP_DOC_AI_PROCESSOR_ID=<processor-id>
+GCP_RAW_BUCKET=<raw-bucket>
+GCP_PROCESSED_BUCKET=<processed-bucket>
 
 # Qdrant
 QDRANT_CLUSTER_ENDPOINT=http://localhost:6333
@@ -200,25 +203,31 @@ QDRANT_COLLECTION_NAME=rag_docs
 
 # Embedding
 EMBEDDING_MODEL_NAME=text-embedding-004
-EMBEDDING_DIMENSIONS=1536
+EMBEDDING_DIMENSIONS=1356
 EMBEDDING_BATCH_SIZE=100
 
-# LLM — Groq
+# LLM Groq (used for routing, grading, retrieval evaluation)
 GROQ_API_KEY=<your-groq-key>
 GROQ_MODEL=llama-3.3-70b-versatile
 
-# LLM — Gemini (alternative)
+# LLM Gemini (used for planning, query rewriting, query expansion)
 GEMINI_API_KEY=<your-gemini-key>
 GEMINI_MODEL=gemini-2.5-flash-lite
 
-# Observability
+# Databases
+POSTGRES_CONN_STRING=postgresql://postgres:pass@localhost:5432/studious
+REDIS_URL=redis://localhost:6379
+
+# Pipeline limits
+MAX_RETRIEVAL_ROUND=3
+MAX_CONTEXT_CHARS=100000
+MAX_PAGE_PER_PARSE=20
+
+# Observability (optional)
 LOGFIRE_TOKEN=
 LANGSMITH_TRACING=
 LANGSMITH_API_KEY=
-
-# Pipeline
-MAX_RETRIEVAL_ROUND=1
-MAX_PAGE_PER_PARSE=20
+LANGSMITH_PROJECT=
 ```
 
 ---
@@ -228,105 +237,86 @@ MAX_PAGE_PER_PARSE=20
 ### Start the API Server
 
 ```bash
-# Via Makefile
-make run-server
-
-# Or directly
+make server-run
+# (or)
 python src/api/main.py
 ```
 
-### CLI — Parse, Ingest, or Query
+### Streamlit Chat UI
 
 ```bash
-# Parse a document (extract content blocks, no embedding)
+make ui-run
+# or: streamlit run web_ui/main.py
+```
+
+### CLI: Parse, Ingest, or Query
+
+```bash
+# Parse a document (extract blocks, no embedding)
 python -m src.ingestion.cli parse data/my_document.pdf --display-stats
 
 # Ingest a document (parse → chunk → embed → store in Qdrant)
 python -m src.ingestion.cli ingest data/my_document.pdf --chunking-strategy structure
 
-# Query Qdrant directly (dense search, no agentic pipeline)
+# Direct vector search (no agentic pipeline)
 python -m src.ingestion.cli query "What is multi-head attention?" --top-k 5
 ```
 
-### API Endpoints
+---
+
+## API Reference
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Liveness ping returns `"running"` |
+| `GET` | `/health` | Dependency health-check (Qdrant ping). Returns `200 ok` or `503 degraded` |
+| `POST` | `/ingestion` | Ingest a document into the RAG pipeline |
+| `POST` | `/query` | Submit a question to the agentic pipeline |
+
+## Testing
+
+The project ships with **300+ unit tests** across 11 modules:
 
 ```bash
-# Ingest a document
-curl -X POST "http://localhost:8000/ingestion?file_path=data/my_document.pdf&chunking_strategy=structure"
+make test
 
-# Query via agentic pipeline
-curl -X POST "http://localhost:8000/query?question=What+are+the+key+findings"
+pytest tests/unit/test_services.py -v
+
 ```
-
-### Pipeline Script (Direct)
-
-```bash
-# Run the agentic pipeline directly
-python -m src.agents.pipeline
-```
-
----
-
-## Ingestion Pipeline
-
-The `Processor` class orchestrates a 4-stage pipeline:
-
-| Stage | Description |
-|---|---|
-| **1 — Parse** | Google Document AI extracts structured blocks (heading, paragraph, table); results are cached to `.cache/doc_parser/` as gzip JSON |
-| **2 — Chunk** | `Chunking` applies structure, fixed, or splitter strategy; returns `Chunk` objects with rich metadata (section title, block types, page numbers) |
-| **3 — Embed** | `EmbeddingService` batch-encodes chunk texts into vectors via Vertex AI `text-embedding-004` with retry logic |
-| **4 — Store** | `QdrantStorageService` upserts vectors in batches of 100 with deterministic UUID5 identifiers |
-
-Document IDs are SHA-256 fingerprints of file size + first 8 KB, enabling idempotent re-ingestion.
-
----
-
-## Agentic Query Pipeline
-
-| Agent | Role |
-|---|---|
-| `RouterAgent` | Classifies the question type (factual, comparative, analytical, summarization) and whether multi-step retrieval is needed |
-| `PlannerAgent` | Decomposes non-factual questions into 2–4 focused sub-questions |
-| `QueryExpander` | Generates 3 LLM-derived query variants per sub-question to improve recall |
-| `HybridSearch` | Runs dense search per variant, merges with RRF |
-| `Reranker` | Cross-encoder re-scores top candidates with FlashRank |
-| `RetrievalAgent` | Self-evaluates retrieval quality and loops until sufficient or exhausted |
-| `GraderAgent` | Filters accepted chunks for relevance to the original question |
-| `SynthesizerAgent` | Generates a final answer with section citations from graded context |
-
----
-
-## Observability
-
-All pipeline stages emit structured traces via **Logfire**:
-
-- Service names: `Studious`, `PROCESS CLI`, `Hybrid search`
-- Events: chunk counts, vector counts, retrieval decisions, query variants, cache hits/misses
-- Error details on parse/upsert failures
-
-Configure Logfire by running `logfire auth` and setting `LOGFIRE_TOKEN` in `.env`.
 
 ---
 
 ## Development
 
 ```bash
-# Lint
+# Lint (ruff)
 make lint
-# or: ruff check . && black --check .
 
-# Format
+# Auto-fix + format
 make format
-# or: ruff check --fix . && black .
 
 # Run pre-commit on all files
 pre-commit run --all-files
 
-# Start the server
-make run-server
 ```
+
+### Observability
+
+All pipeline stages emit structured traces via **Logfire**:
+
+- **Ingestion:** parse cache hits/misses, chunk counts, batch upsert progress, retry warnings
+- **Query:** retrieval decisions per round, query variants, grader accept/reject counts, synthesis category
+- **Errors:** full structured error context on any exception
+
+Set up Logfire with `logfire auth` and add your `LOGFIRE_TOKEN` to `.env`.
 
 ---
 
-_Last updated: 2026-06-02_
+## Security Notes
+
+| Concern | Mitigation |
+|---|---|
+| **Prompt injection via documents** | Retrieved chunks are wrapped in `<retrieved_context>` XML tags. All retrieval-dependent prompts include an immutable system rule instructing the LLM to treat that content as untrusted plain text. |
+| **Qdrant transient failures** | All Qdrant calls are retried up to 3 times with exponential back-off and jitter before propagating the error. |
+| **API key exposure** | All secrets are loaded from `.env` via `python-dotenv`; `.env` is `.gitignore`d. |
+| **Idempotent ingestion** | Documents are fingerprinted (SHA-256 of size + first 8 KB); Qdrant points use deterministic UUID5 IDs safe to re-ingest. |
