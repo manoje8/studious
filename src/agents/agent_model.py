@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.utils.config import config
+from src.common.utils.config import config
 
 
 class RetrievalDecision(Enum):

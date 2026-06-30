@@ -12,12 +12,12 @@ Covers:
 
 import pytest
 
+from src.common.utils.constants import ChunkerStrategy
 from src.ingestion.chunking.chunk import Chunk, Chunking
 from src.ingestion.chunking.chunker_factory import create_chunker
 from src.ingestion.chunking.chunking_config import ChunkingConfig
 from src.ingestion.chunking.fixed_window import FixedWindow
 from src.ingestion.chunking.recursive_character import RecursiveCharacterChunker
-from src.utils.constants import ChunkerStrategy
 
 
 @pytest.fixture

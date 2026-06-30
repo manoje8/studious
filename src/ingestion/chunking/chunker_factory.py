@@ -1,9 +1,9 @@
 from collections.abc import Callable
 
+from src.common.utils.constants import ChunkerStrategy
+from src.common.utils.factory import Factory, ServiceScope
 from src.ingestion.chunking.Chunker import Chunker
 from src.ingestion.chunking.chunking_config import ChunkingConfig
-from src.utils.constants import ChunkerStrategy
-from src.utils.factory import Factory, ServiceScope
 
 
 class ChunkerFactory(Factory[Chunker]):

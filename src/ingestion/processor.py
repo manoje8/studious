@@ -5,16 +5,11 @@ from pathlib import Path
 
 import logfire
 
-from src.ingestion.chunking.chunker_factory import create_chunker
-from src.ingestion.chunking.chunking_config import ChunkingConfig
-from src.ingestion.embedding import EmbeddingService
-from src.ingestion.parser.docling_parser import DoclingParser
-from src.ingestion.parser.google_doc_ai import GoogleDocAI
-from src.services.qdrant import QdrantStorageService
-from src.services.sparse_index import SparseSearchIndex
-from src.storage.storage_factory import StorageFactory
-from src.utils.config import config
-from src.utils.constants import (
+from src.common.services.qdrant import QdrantStorageService
+from src.common.services.sparse_index import SparseSearchIndex
+from src.common.storage.storage_factory import StorageFactory
+from src.common.utils.config import config
+from src.common.utils.constants import (
     HTML_FORMATS,
     OFFICE_FORMATS,
     TEXT_FORMATS,
@@ -22,8 +17,13 @@ from src.utils.constants import (
     ParseMethod,
     StorageType,
 )
-from src.utils.doc_cache import DocumentCache
-from src.utils.helper import bootstrap_sparse_index, separate_content
+from src.common.utils.doc_cache import DocumentCache
+from src.common.utils.helper import bootstrap_sparse_index, separate_content
+from src.ingestion.chunking.chunker_factory import create_chunker
+from src.ingestion.chunking.chunking_config import ChunkingConfig
+from src.ingestion.embedding import EmbeddingService
+from src.ingestion.parser.docling_parser import DoclingParser
+from src.ingestion.parser.google_doc_ai import GoogleDocAI
 
 
 class Processor:

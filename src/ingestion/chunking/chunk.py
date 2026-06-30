@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass, field
 
-from src.utils.tokenizer import TikTokenTokenizer, Tokenizer
+from src.common.utils.tokenizer import TikTokenTokenizer, Tokenizer
 
 
 @dataclass

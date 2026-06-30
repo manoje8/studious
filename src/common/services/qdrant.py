@@ -1,5 +1,6 @@
 import logging
 import uuid
+from functools import partial
 
 import logfire
 from qdrant_client import AsyncQdrantClient
@@ -18,8 +19,8 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
+from src.common.utils.config import config
 from src.ingestion.embedding import EmbeddedChunk
-from src.utils.config import config
 
 _logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ async def _with_retry(coro):
     """Execute an awaitable under the standard Qdrant retry policy."""
     async for attempt in AsyncRetrying(**_QDRANT_RETRY_POLICY):
         with attempt:
-            return await coro
+            return await coro()
 
 
 class QdrantStorageService:
@@ -62,14 +63,14 @@ class QdrantStorageService:
         transient blip does not immediately report unhealthy.
         """
         try:
-            await _with_retry(self.client.get_collections())
+            await _with_retry(partial(self.client.get_collections))
             return True
         except Exception as exc:
             logfire.warning("Qdrant health-check failed", error=str(exc))
             return False
 
     async def validate_vector_dimension(self) -> None:
-        info = await _with_retry(self.client.get_collection(self.collection_name))
+        info = await _with_retry(partial(self.client.get_collection, self.collection_name))
         actual = info.config.params.vectors.size
         if actual != self.vector_size:
             raise ValueError(
@@ -79,11 +80,12 @@ class QdrantStorageService:
             )
 
     async def ensure_collection_exists(self) -> None:
-        exists = await _with_retry(self.client.collection_exists(self.collection_name))
+        exists = await _with_retry(partial(self.client.collection_exists, self.collection_name))
 
         if not exists:
             await _with_retry(
-                self.client.create_collection(
+                partial(
+                    self.client.create_collection,
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE),
                 )
@@ -125,7 +127,7 @@ class QdrantStorageService:
 
             try:
                 await _with_retry(
-                    self.client.upsert(collection_name=self.collection_name, points=points)
+                    partial(self.client.upsert, collection_name=self.collection_name, points=points)
                 )
             except Exception as e:
                 logfire.error(
@@ -154,7 +156,8 @@ class QdrantStorageService:
             )
 
         result = await _with_retry(
-            self.client.query_points(
+            partial(
+                self.client.query_points,
                 collection_name=self.collection_name,
                 query=query_vector,
                 query_filter=search_filter,
@@ -176,7 +179,9 @@ class QdrantStorageService:
         ]
 
     async def chunk_count(self) -> int:
-        current_count = await _with_retry(self.client.count(collection_name=self.collection_name))
+        current_count = await _with_retry(
+            partial(self.client.count, collection_name=self.collection_name)
+        )
         return current_count.count
 
     async def scroll_all_chunks(self) -> list[dict]:
@@ -187,7 +192,8 @@ class QdrantStorageService:
 
         while True:
             result, next_page_offset = await _with_retry(
-                self.client.scroll(
+                partial(
+                    self.client.scroll,
                     collection_name=self.collection_name,
                     scroll_filter=None,
                     limit=500,

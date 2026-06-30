@@ -26,14 +26,14 @@ from src.agents.query_expander import QueryExpander
 from src.agents.retrieval import RetrievalAgent
 from src.api.routers.document_routes import create_document_routes
 from src.api.routers.query_router import create_query_routes
+from src.common.llm.gemini import GeminiClient
+from src.common.llm.groq import GroqClient
+from src.common.services.qdrant import QdrantStorageService
+from src.common.services.reranker import Reranker
+from src.common.services.sparse_index import SparseSearchIndex
+from src.common.utils.config import config
+from src.common.utils.helper import bootstrap_sparse_index, check_env, has_internet
 from src.ingestion.embedding import EmbeddingService
-from src.llm.gemini import GeminiClient
-from src.llm.groq import GroqClient
-from src.services.qdrant import QdrantStorageService
-from src.services.reranker import Reranker
-from src.services.sparse_index import SparseSearchIndex
-from src.utils.config import config
-from src.utils.helper import bootstrap_sparse_index, check_env, has_internet
 
 
 @asynccontextmanager

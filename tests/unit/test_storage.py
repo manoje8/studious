@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.storage.gcp_storage import GoogleCloudStorage
-from src.storage.local_storage import LocalStorage
-from src.storage.storage_factory import StorageFactory
-from src.utils.constants import StorageType
+from src.common.storage.gcp_storage import GoogleCloudStorage
+from src.common.storage.local_storage import LocalStorage
+from src.common.storage.storage_factory import StorageFactory
+from src.common.utils.constants import StorageType
 
 
 # Test dataclass for list uploads
@@ -182,7 +182,7 @@ class TestGoogleCloudStorage:
         """Mock Google Cloud Storage client and bucket"""
         with (
             patch("google.cloud.storage.Client") as mock_client_cls,
-            patch("src.storage.gcp_storage.config") as mock_config,
+            patch("src.common.storage.gcp_storage.config") as mock_config,
         ):
             mock_config.PROJECT_ID = "test-project"
             mock_client = MagicMock()
@@ -365,7 +365,7 @@ class TestStorageFactory:
     #         "prefix": "test-prefix",
     #     }
     #
-    #     with patch("src.storage.gcp_storage.config") as mock_config:
+    #     with patch("src.common.storage.gcp_storage.config") as mock_config:
     #         mock_config.PROJECT_ID = "test-project"
     #         storage = StorageFactory.create(config)
     # assert isinstance(storage, GoogleCloudStorage)
@@ -374,7 +374,7 @@ class TestStorageFactory:
     #     """Test creating GCS storage without prefix"""
     #     config = {"type": StorageType.GCS.value, "bucket": "test-bucket"}
     #
-    #     with patch("src.storage.gcp_storage.config") as mock_config:
+    #     with patch("src.common.storage.gcp_storage.config") as mock_config:
     #         mock_config.PROJECT_ID = "test-project"
     #         storage = StorageFactory.create(config)
     #
@@ -423,7 +423,7 @@ class TestBaseStorageInterface:
 
     # def test_gcs_storage_implements_all_methods(self):
     #     """Test GoogleCloudStorage implements all abstract methods"""
-    #     with patch("src.storage.gcp_storage.config") as mock_config:
+    #     with patch("src.common.storage.gcp_storage.config") as mock_config:
     #         mock_config.PROJECT_ID = "test"
     #         storage = GoogleCloudStorage("test-bucket")
     #

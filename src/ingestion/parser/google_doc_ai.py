@@ -6,8 +6,8 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from google.cloud import documentai
 from pypdf import PdfReader, PdfWriter
 
-from src.utils.config import config
-from src.utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
+from src.common.utils.config import config
+from src.common.utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
 
 from .parser import Parser
 

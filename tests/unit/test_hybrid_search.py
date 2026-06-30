@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from src.agents.hybrid_search import HybridSearch
+from src.common.services.qdrant import QdrantStorageService
+from src.common.services.sparse_index import SparseSearchIndex
 from src.ingestion.embedding import EmbeddingService
-from src.services.qdrant import QdrantStorageService
-from src.services.sparse_index import SparseSearchIndex
 
 
 # Mock classes and fixtures
@@ -382,7 +382,7 @@ class TestQdrantStorageService:
     @pytest.fixture
     def qdrant_service(self, mock_qdrant_client):
         """Create a QdrantStorageService with mocked client"""
-        from src.services.qdrant import QdrantStorageService
+        from src.common.services.qdrant import QdrantStorageService
 
         service = QdrantStorageService(
             url="http://localhost:6333",
@@ -527,7 +527,7 @@ class TestSparseSearchIndex:
     @pytest.fixture
     def sparse_index(self):
         """Create a SparseSearchIndex instance"""
-        from src.services.sparse_index import SparseSearchIndex
+        from src.common.services.sparse_index import SparseSearchIndex
 
         return SparseSearchIndex()
 
@@ -606,7 +606,7 @@ class TestBootstrapSparseIndex:
     @pytest.mark.asyncio
     async def test_bootstrap_calls_build(self):
         """Test that bootstrap fetches chunks and builds index"""
-        from src.utils.helper import bootstrap_sparse_index
+        from src.common.utils.helper import bootstrap_sparse_index
 
         mock_storage = AsyncMock()
         mock_storage.chunk_count.return_value = 1

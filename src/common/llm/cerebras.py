@@ -2,8 +2,8 @@ import asyncio
 
 from cerebras.cloud.sdk import AsyncCerebras
 
-from src.llm.base import BaseLLM, LLMResponse
-from src.utils.config import config
+from src.common.llm.base import BaseLLM, LLMResponse
+from src.common.utils.config import config
 
 
 class CerebrasAI(BaseLLM):

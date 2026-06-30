@@ -6,7 +6,7 @@ import logfire
 
 from src.agents.agent_model import AgentState
 from src.agents.graph.state import State
-from src.utils.config import config
+from src.common.utils.config import config
 
 _NO_CONTEXT_MSG = (
     "I could not find sufficient information in the documents "

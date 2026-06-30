@@ -4,7 +4,7 @@ from pathlib import Path
 import trafilatura
 from bs4 import BeautifulSoup
 
-from src.utils.constants import BLOCK_TAGS, HEADING_TAGS, SKIP_TAGS, ParseMethod
+from src.common.utils.constants import BLOCK_TAGS, HEADING_TAGS, SKIP_TAGS, ParseMethod
 
 
 class Parser:

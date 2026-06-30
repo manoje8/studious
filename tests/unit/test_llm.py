@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.llm.base import BaseLLM, LLMContentError, LLMResponse
-from src.llm.gemini import GeminiClient
+from src.common.llm.base import BaseLLM, LLMContentError, LLMParseError, LLMResponse
+from src.common.llm.gemini import GeminiClient
 
 
 class TestLLMResponse:
@@ -54,7 +54,7 @@ class TestLLMResponse:
 
     def test_parsed_json_invalid_raises(self):
         resp = LLMResponse("not valid json")
-        with pytest.raises(json.JSONDecodeError):
+        with pytest.raises(LLMParseError):
             _ = resp.parsed_json
 
     def test_parsed_json_with_surrounding_whitespace(self):
@@ -98,8 +98,8 @@ class TestGeminiClient:
     def mock_genai(self):
         """Patch google.genai.Client so no real API calls happen."""
         with (
-            patch("src.llm.gemini.genai") as mock_genai_module,
-            patch("src.llm.gemini.config") as mock_config,
+            patch("src.common.llm.gemini.genai") as mock_genai_module,
+            patch("src.common.llm.gemini.config") as mock_config,
         ):
             mock_config.GEMINI_API_KEY = "test-api-key"
             mock_client = MagicMock()

@@ -4,7 +4,7 @@ from src.agents.agent_model import RetrievalDecision, RetrievalRound
 from src.agents.graph.state import State
 from src.agents.hybrid_search import HybridSearch
 from src.agents.query_expander import QueryExpander
-from src.services.reranker import Reranker
+from src.common.services.reranker import Reranker
 
 HIGH_CONFIDENCE_RRF_THRESHOLD = 0.85
 

@@ -7,8 +7,8 @@ from typing import Any
 import logfire
 from ascii_colors import ASCIIColors
 
-from src.services.qdrant import QdrantStorageService
-from src.services.sparse_index import SparseSearchIndex
+from src.common.services.qdrant import QdrantStorageService
+from src.common.services.sparse_index import SparseSearchIndex
 
 
 def check_env():

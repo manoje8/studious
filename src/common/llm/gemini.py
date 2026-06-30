@@ -3,8 +3,8 @@ import asyncio
 import logfire
 from google import genai
 
-from src.llm.base import BaseLLM, LLMResponse
-from src.utils.config import config
+from src.common.llm.base import BaseLLM, LLMResponse
+from src.common.utils.config import config
 
 
 class GeminiClient(BaseLLM):

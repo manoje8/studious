@@ -3,8 +3,8 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from src.common.utils.constants import ParseMethod
 from src.ingestion.processor import Processor
-from src.utils.constants import ParseMethod
 
 
 class IngestionRequest(BaseModel):

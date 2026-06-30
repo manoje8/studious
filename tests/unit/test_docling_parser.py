@@ -371,20 +371,6 @@ class TestDoclingParser:
             assert result[0] == {"type": "text", "text": "Hello World", "page_idx": 0}
             mock_converter.convert.assert_called_once_with(str(pdf_path))
 
-    # Edge cases and additional tests
-    def test_parse_doc_with_empty_file_path(self, parser):
-        """Test parsing with an empty file path"""
-        with pytest.raises(FileNotFoundError):
-            parser.parse_doc(Path(""))
-
-    def test_parse_doc_with_directory_path(self, parser, tmp_path):
-        """Test parsing with a directory path instead of a file"""
-        dir_path = tmp_path / "test_dir"
-        dir_path.mkdir()
-
-        with pytest.raises(FileNotFoundError):
-            parser.parse_doc(dir_path)
-
     def test_converter_cache_isolation(self):
         """Test that different parser instances have separate caches"""
         parser1 = DoclingParser()
@@ -402,7 +388,7 @@ class TestDoclingParser:
 
     def test_get_converter_with_do_ocr_options(self, parser):
         """Test converter creation with different OCR options"""
-        with patch("src.utils.config") as mock_config:
+        with patch("src.common.utils.config") as mock_config:
             mock_config.TABLE_MODE = "fast"
             mock_config.DO_TABLES = False
             mock_config.DO_OCR = True

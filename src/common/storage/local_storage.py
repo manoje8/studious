@@ -4,7 +4,7 @@ from dataclasses import asdict
 from io import BytesIO
 from pathlib import Path
 
-from src.storage.base_storage import BaseStorage
+from src.common.storage.base_storage import BaseStorage
 
 
 class LocalStorage(BaseStorage):

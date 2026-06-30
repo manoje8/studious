@@ -14,9 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.qdrant import QdrantStorageService
-from src.services.reranker import Reranker
-from src.services.sparse_index import SparseSearchIndex
+from src.common.services.qdrant import QdrantStorageService
+from src.common.services.reranker import Reranker
+from src.common.services.sparse_index import SparseSearchIndex
 
 # SparseSearchIndex
 
@@ -143,7 +143,7 @@ class TestReranker:
     @pytest.fixture
     def mock_ranker(self):
         """Mock flashrank Ranker."""
-        with patch("src.services.reranker.Ranker") as mock_ranker_cls:
+        with patch("src.common.services.reranker.Ranker") as mock_ranker_cls:
             ranker_instance = MagicMock()
             mock_ranker_cls.return_value = ranker_instance
             yield ranker_instance
@@ -237,9 +237,9 @@ class TestQdrantStorageService:
     @pytest.fixture
     def mock_client(self):
         with (
-            patch("src.services.qdrant.AsyncQdrantClient") as mock_cls,
-            patch("src.services.qdrant.config") as mock_config,
-            patch("src.services.qdrant.logfire"),
+            patch("src.common.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("src.common.services.qdrant.config") as mock_config,
+            patch("src.common.services.qdrant.logfire"),
         ):
             mock_config.QDRANT_COLLECTION_NAME = "test_collection"
             mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
@@ -475,9 +475,9 @@ class TestQdrantRetry:
     @pytest.fixture
     def mock_client(self):
         with (
-            patch("src.services.qdrant.AsyncQdrantClient") as mock_cls,
-            patch("src.services.qdrant.config") as mock_config,
-            patch("src.services.qdrant.logfire"),
+            patch("src.common.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("src.common.services.qdrant.config") as mock_config,
+            patch("src.common.services.qdrant.logfire"),
         ):
             mock_config.QDRANT_COLLECTION_NAME = "test_collection"
             mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
@@ -563,9 +563,9 @@ class TestQdrantPing:
     @pytest.fixture
     def mock_client(self):
         with (
-            patch("src.services.qdrant.AsyncQdrantClient") as mock_cls,
-            patch("src.services.qdrant.config") as mock_config,
-            patch("src.services.qdrant.logfire"),
+            patch("src.common.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("src.common.services.qdrant.config") as mock_config,
+            patch("src.common.services.qdrant.logfire"),
         ):
             mock_config.QDRANT_COLLECTION_NAME = "test_collection"
             mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"

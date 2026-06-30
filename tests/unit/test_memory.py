@@ -18,7 +18,7 @@ from src.agents.memory.conversation_model import (
     EpisodicSummary,
 )
 from src.agents.memory.query_rewriter import QueryRewriter
-from src.llm.base import LLMResponse
+from src.common.llm.base import LLMResponse
 
 # Data Models
 

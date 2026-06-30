@@ -5,7 +5,7 @@ import logfire
 import redis.asyncio as redis
 
 from src.agents.memory.conversation_model import ConversationSession, ConversationTurn
-from src.utils.config import config
+from src.common.utils.config import config
 
 
 class ShortTermMemoryManager:

@@ -5,8 +5,8 @@ import logfire
 from google import genai
 from qdrant_client.http.models import PointStruct
 
+from src.common.utils.config import config
 from src.ingestion.chunking.chunk import Chunk
-from src.utils.config import config
 
 
 @dataclass

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import logfire
 
-from .config import config
+from src.common.utils.config import config
 
 
 class DocumentCache:

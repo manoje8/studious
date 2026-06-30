@@ -8,7 +8,7 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.utils.constants import ParseMethod
+from src.common.utils.constants import ParseMethod
 
 load_dotenv()
 

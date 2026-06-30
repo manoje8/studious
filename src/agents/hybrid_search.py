@@ -2,9 +2,9 @@ import asyncio
 
 import logfire
 
+from src.common.services.qdrant import QdrantStorageService
+from src.common.services.sparse_index import SparseSearchIndex
 from src.ingestion.embedding import EmbeddingService
-from src.services.qdrant import QdrantStorageService
-from src.services.sparse_index import SparseSearchIndex
 
 
 class HybridSearch:

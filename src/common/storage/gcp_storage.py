@@ -3,8 +3,8 @@ import json
 from dataclasses import asdict
 from io import BytesIO
 
-from src.storage.base_storage import BaseStorage
-from src.utils.config import config
+from src.common.storage.base_storage import BaseStorage
+from src.common.utils.config import config
 
 
 class GoogleCloudStorage(BaseStorage):

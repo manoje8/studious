@@ -1,5 +1,5 @@
-from src.storage.base_storage import BaseStorage
-from src.utils.constants import StorageType
+from src.common.storage.base_storage import BaseStorage
+from src.common.utils.constants import StorageType
 
 
 class StorageFactory:
@@ -14,11 +14,11 @@ class StorageFactory:
         storage_type = config.get("type", "local").lower()
 
         if storage_type == StorageType.LOCAL.value:
-            from src.storage.local_storage import LocalStorage
+            from src.common.storage.local_storage import LocalStorage
 
             return LocalStorage(base_path=config["base_dir"])
         elif storage_type == StorageType.GCS.value:
-            from src.storage.gcp_storage import GoogleCloudStorage
+            from src.common.storage.gcp_storage import GoogleCloudStorage
 
             return GoogleCloudStorage(bucket_name=config["bucket"], prefix=config.get("prefix", ""))
         else:

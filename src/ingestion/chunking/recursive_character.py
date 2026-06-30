@@ -1,9 +1,9 @@
 import logfire
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from src.common.utils.tokenizer import TikTokenTokenizer, Tokenizer
 from src.ingestion.chunking.chunk import Chunk
 from src.ingestion.chunking.Chunker import Chunker
-from src.utils.tokenizer import TikTokenTokenizer, Tokenizer
 
 
 class RecursiveCharacterChunker(Chunker):

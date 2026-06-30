@@ -3,7 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, ClassVar, Generic, Literal, TypeVar
 
-from src.utils.hasher import hash_data
+from src.common.utils.hasher import hash_data
 
 T = TypeVar("T", covariant=True)
 

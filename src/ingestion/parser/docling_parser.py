@@ -8,9 +8,9 @@ from typing import Any
 import logfire
 from docling.datamodel.pipeline_options import TableFormerMode
 
+from src.common.utils.config import config
+from src.common.utils.constants import HTML_FORMATS, OFFICE_FORMATS
 from src.ingestion.parser.parser import Parser
-from src.utils.config import config
-from src.utils.constants import HTML_FORMATS, OFFICE_FORMATS
 
 
 class DoclingParser(Parser):
