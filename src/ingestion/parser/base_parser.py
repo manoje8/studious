@@ -120,7 +120,7 @@ class Parser:
             tag.decompose()
 
         nodes = []
-        heading_stack = []  # Track current heading breadcrumb
+        heading_stack = []
 
         for tag in soup.find_all(True):
             name = tag.name

@@ -8,14 +8,24 @@ from pypdf import PdfReader, PdfWriter
 
 from src.common.utils.config import config
 from src.common.utils.constants import GOOGLE_MIME_TYPES, HTML_FORMATS, OFFICE_FORMATS
-
-from .parser import Parser
+from src.ingestion.parser.base_parser import Parser
 
 
 class GoogleDocAI(Parser):
     def __init__(self):
         super().__init__()
         self.client = documentai.DocumentProcessorServiceClient()
+
+    def check_installation(self) -> bool:
+        try:
+            from google.cloud import documentai  # noqa: F401
+
+            return True
+        except ImportError:
+            logfire.error(
+                "google-cloud-documentai is not installed. Install it with: pip install google-cloud-documentai"
+            )
+            return False
 
     def parse_pdf(
         self,
@@ -102,17 +112,6 @@ class GoogleDocAI(Parser):
             logfire.error(f"Error in parsing HTML: {str(e)}")
             raise
 
-    def check_installation(self) -> bool:
-        try:
-            from google.cloud import documentai  # noqa: F401
-
-            return True
-        except ImportError:
-            logfire.error(
-                "google-cloud-documentai is not installed. Install it with: pip install google-cloud-documentai"
-            )
-            return False
-
     def _process_pdf(self, file_path: Path | str):
         name_without_suffix = file_path.stem
         ext = file_path.suffix
@@ -170,7 +169,37 @@ class GoogleDocAI(Parser):
             request = documentai.ProcessRequest(name=processor_name, raw_document=raw_doc)
 
             result = self.client.process_document(request=request)
-            return result.document.text
+
+            document = result.document
+
+            return document.text
+
+        except ResourceExhausted:
+            logfire.error("Document AI quota exhausted")
+            raise
+        except ServiceUnavailable as e:
+            logfire.warning(f"Document AI transiently unavailable: {e}")
+            raise
+
+    def _call_doc_ai(self, content: bytes, ext: str) -> documentai.Document:
+        try:
+            ext_key = ext.lower().lstrip(".")
+            mime_type = GOOGLE_MIME_TYPES.get(ext_key)
+
+            if not mime_type:
+                raise ValueError(f"No MIME type mapping for extension: {ext}")
+
+            processor_name = self.client.processor_path(
+                config.PROJECT_ID,
+                config.GCP_DOC_AI_LOCATION,
+                config.GCP_DOC_AI_PROCESSOR_ID,
+            )
+
+            raw_doc = documentai.RawDocument(content=content, mime_type=mime_type)
+            request = documentai.ProcessRequest(name=processor_name, raw_document=raw_doc)
+
+            result = self.client.process_document(request=request)
+            return result.document
 
         except ResourceExhausted:
             logfire.error("Doc AI quota exhausted")

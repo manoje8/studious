@@ -93,6 +93,7 @@ class TestChunkDataclass:
             section_title="Intro",
             page_numbers=[1, 2],
             token_count=10,
+            metadata={},
         )
         payload = chunk.to_quant_payload()
         expected_keys = {
@@ -104,6 +105,7 @@ class TestChunkDataclass:
             "section_title",
             "page_numbers",
             "token_count",
+            "metadata",
         }
         assert set(payload.keys()) == expected_keys
 

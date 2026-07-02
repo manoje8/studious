@@ -8,7 +8,7 @@ from src.ingestion.processor import Processor
 
 
 class IngestionRequest(BaseModel):
-    file_path: str | Path
+    path: str | Path
     parse_method: ParseMethod
     doc_id: str | None = None
 
@@ -22,9 +22,13 @@ def create_document_routes():
     @router.post("/ingestion")
     async def ingestion(body: IngestionRequest):
         return await processor.ingest_document(
-            file_path=body.file_path,
+            file_path=body.path,
             doc_id=body.doc_id,
             parse_method=body.parse_method,
         )
+
+    @router.post("/bulk-ingestion")
+    async def bulk_ingestion(body: IngestionRequest):
+        pass
 
     return router

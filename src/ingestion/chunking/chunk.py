@@ -56,7 +56,35 @@ class Chunk:
             "section_title": self.section_title,
             "page_numbers": self.page_numbers,
             "token_count": self.token_count,
+            "metadata": self.metadata,
         }
+
+
+@dataclass
+class BatchProcess:
+    successful_files: list[str]
+    failed_files: list[str]
+    total_files: int
+    processing_time: float
+    errors: dict[str, str]
+    output_dir: str
+
+    @property
+    def success_rate(self) -> float:
+        if self.total_files == 0:
+            return 0.0
+        return (len(self.succesfull_files) / self.total_files) * 100
+
+    def summary(self) -> str:
+        return (
+            f"Batch Processing Summary:\n"
+            f"  Total files: {self.total_files}\n"
+            f"  Successful: {len(self.successful_files)} ({self.success_rate:.1f}%)\n"
+            f"  Failed: {len(self.failed_files)}\n"
+            f"  Processing time: {self.processing_time:.2f} seconds\n"
+            f"  Output directory: {self.output_dir}\n"
+            f"  Dry run: {self.dry_run}"
+        )
 
 
 class Chunking:
@@ -74,30 +102,6 @@ class Chunking:
         )
         cleaned = re.sub(r" {2,}", " ", cleaned)
         return cleaned.strip()
-
-    def _make_chunk(
-        self,
-        text: str,
-        chunk_index: int,
-        doc_id: str,
-        source_file: str,
-        chunk_type: str,
-        section_title: str = "",
-        block_types: list[str] = None,
-        page_numbers: list[int] = None,
-    ) -> Chunk:
-        """Helper that constructs a Chunk and populates token_count immediately."""
-        return Chunk(
-            text=text,
-            chunk_index=chunk_index,
-            doc_id=doc_id,
-            source_file=source_file,
-            chunk_type=chunk_type,
-            section_title=section_title,
-            block_types=block_types or [],
-            page_numbers=page_numbers or [],
-            token_count=self.tokenizer.count(text),
-        )
 
     def build_parent_child_chunk(self, chunks: list[Chunk], parent_window: int = 3) -> list[Chunk]:
         """

@@ -40,7 +40,7 @@ class Config:
     LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY")
     LANGSMITH_PROJECT: str = os.getenv("LANGSMITH_PROJECT")
 
-    MAX_PAGE_PER_PARSE: int = int(os.getenv("MAX_PAGE_PER_PARSE", "20"))
+    MAX_PAGE_PER_PARSE: int = int(os.getenv("MAX_PAGE_PER_PARSE", 20))
 
     EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME")
     EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", 1356))

@@ -10,7 +10,7 @@ from docling.datamodel.pipeline_options import TableFormerMode
 
 from src.common.utils.config import config
 from src.common.utils.constants import HTML_FORMATS, OFFICE_FORMATS
-from src.ingestion.parser.parser import Parser
+from src.ingestion.parser.base_parser import Parser
 
 
 class DoclingParser(Parser):

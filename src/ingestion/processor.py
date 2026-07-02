@@ -59,16 +59,6 @@ class Processor:
 
         self.in_storage = StorageFactory.create(local_config)
 
-    def _get_parser(self, parser_type: str):
-        parser_name = parser_type.strip().lower()
-
-        if parser_name == ParseMethod.GOOGLE_DOC_AI:
-            return GoogleDocAI()
-        elif parser_name == ParseMethod.DOCLING:
-            return DoclingParser()
-        else:
-            raise ValueError(f"Unsupported Parser type: {parser_type}")
-
     def _select_chunking_strategy(self, file_path: Path) -> str:
         suffix = file_path.suffix.lower()
 
@@ -118,7 +108,7 @@ class Processor:
         with open(path, "rb") as f:
             hasher.update(f.read(read_bytes))
 
-        return f"doc={hasher.hexdigest()[:24]}"
+        return hasher.hexdigest()[:24]
 
     async def _chunk_doc_content(
         self,
@@ -171,7 +161,7 @@ class Processor:
             return cache_result, doc_id
 
         try:
-            doc_parser = self._get_parser(parser_type=parse_method)
+            doc_parser = get_parser_method(parser_type=parse_method)
 
             if not doc_parser.check_installation():
                 raise ImportError("Required package is not installed")
@@ -290,14 +280,13 @@ class Processor:
             "vectors_stored": len(embedded_chunks),
         }
 
-    async def query(self, question: str, top_k: int = 5, doc_id_filter: str | None = None):
-        if not question:
-            raise ValueError("Please enter your question!")
 
-        query_vector = await self.embedding_service.embed_single(question)
+def get_parser_method(parser_type: str):
+    parser_name = parser_type.strip().lower()
 
-        results = await self.storage_service.search(
-            query_vector=query_vector, top_k=top_k, doc_id_filter=doc_id_filter
-        )
-
-        return results
+    if parser_name == ParseMethod.GOOGLE_DOC_AI:
+        return GoogleDocAI()
+    elif parser_name == ParseMethod.DOCLING:
+        return DoclingParser()
+    else:
+        raise ValueError(f"Unsupported Parser type: {parser_type}")
