@@ -7,11 +7,17 @@ name = "Medici"
 description = "Agentic Retrieval-Augmented Generation"
 version = "0.0.2"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     {name="Mano Deepan", email="manodeepan2001@gmail.com"}
 ]
 keywords = ["fastapi", "rag", "ai"]
+
+dependencies=[
+    "treant"
+]
+[tool.uv.sources]
+treant = { git = "https://github.com/manoje8/treant.git"}
 
 [tool.ruff]
 target-version = "py310"

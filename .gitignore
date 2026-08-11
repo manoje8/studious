@@ -64,3 +64,4 @@ data
 .cache
 .benchmarks
 tests/eval/eval_results.json
+.doc_cache/

@@ -21,29 +21,29 @@ Simple queries (`chitchat`, `meta`) short-circuit directly to a response. Low-co
 
 ## Tech Stack
 
-| Concern | Technology |
-|---|---|
-| API | FastAPI + Uvicorn |
-| Graph Orchestration | LangGraph `StateGraph` |
-| Graph Checkpointing | LangGraph PostgreSQL checkpointer (psycopg async pool) |
-| LLM — routing / grading / retrieval eval | Groq `llama-3.3-70b-versatile` |
-| LLM — planning / rewriting / expansion | Google Gemini `gemini-2.0-flash` |
-| LLM — additional provider | Cerebras `llama3.1-70b` |
-| Vector Store | Qdrant (async, cosine similarity, UUID5 idempotent IDs) |
-| Sparse Search | BM25 (`rank-bm25`), rebuilt in-memory at startup |
-| Fusion | Reciprocal Rank Fusion (RRF) |
-| Re-ranking | FlashRank cross-encoder (CPU-friendly, lazy-initialised) |
-| Document Parsing | Google Document AI (PDF, HTML, DOCX, PPTX, XLS/XLSX) |
-| Embeddings | Google Vertex AI `text-embedding-004` (batched, configurable dimensions) |
-| Short-term Memory | Redis (2-hour TTL session store) |
-| Long-term Memory | PostgreSQL `episodic_memories` table (LLM-compressed summaries) |
-| Embedding Cache | PostgreSQL-backed, up to 50 k entries |
-| Semantic Query Cache | Redis vector cache — returns cached answers for near-duplicate queries |
-| Parse Cache | Filesystem gzip cache keyed by file path + mtime + parser config |
-| Retry / Resilience | tenacity — 3 attempts, exponential back-off + jitter on all Qdrant calls |
-| Observability | Logfire (structured traces), LangSmith (optional) |
-| Auth | JWT (`SECRET_KEY` / `HS256`); guest mode when no accounts are configured |
-| Dev tooling | Ruff, pre-commit |
+| Concern                                  | Technology                                                               |
+|------------------------------------------|--------------------------------------------------------------------------|
+| API                                      | FastAPI + Uvicorn                                                        |
+| Graph Orchestration                      | LangGraph `StateGraph`                                                   |
+| Graph Checkpointing                      | LangGraph PostgreSQL checkpointer (psycopg async pool)                   |
+| LLM — routing / grading / retrieval eval | Groq `llama-3.3-70b-versatile`                                           |
+| LLM — planning / rewriting / expansion   | Google Gemini `gemini-2.0-flash`                                         |
+| LLM — additional provider                | Cerebras `llama3.1-70b`                                                  |
+| Vector Store                             | Qdrant (async, cosine similarity, UUID5 idempotent IDs)                  |
+| Sparse Search                            | BM25 (`rank-bm25`), rebuilt in-memory at startup                         |
+| Fusion                                   | Reciprocal Rank Fusion (RRF)                                             |
+| Re-ranking                               | FlashRank cross-encoder (CPU-friendly, lazy-initialised)                 |
+| Document Parsing                         | Google Document AI, Docling (PDF, HTML, DOCX, PPTX, XLS/XLSX)            |
+| Embeddings                               | Google Vertex AI `text-embedding-004` (batched, configurable dimensions) |
+| Short-term Memory                        | Redis (2-hour TTL session store)                                         |
+| Long-term Memory                         | PostgreSQL `episodic_memories` table (LLM-compressed summaries)          |
+| Embedding Cache                          | PostgreSQL-backed, up to 50 k entries                                    |
+| Semantic Query Cache                     | Redis vector cache — returns cached answers for near-duplicate queries   |
+| Parse Cache                              | Filesystem gzip cache keyed by file path + mtime + parser config         |
+| Retry / Resilience                       | tenacity — 3 attempts, exponential back-off + jitter on all Qdrant calls |
+| Observability                            | Logfire (structured traces), LangSmith (optional)                        |
+| Auth                                     | JWT (`SECRET_KEY` / `HS256`); guest mode when no accounts are configured |
+| Dev tooling                              | Ruff, pre-commit                                                         |
 
 ---
 
@@ -175,10 +175,8 @@ LANGSMITH_API_KEY=
 ## Running
 
 ```bash
-# API server only
 make server-run           # python src/api/main.py  →  http://localhost:8000
 
-# Streamlit chat UI only
 make ui-run               # streamlit run main.py  →  http://localhost:8501
 
 # CLI — parse, ingest, or query without the API

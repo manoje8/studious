@@ -1,14 +1,12 @@
 import asyncio
-import hashlib
-import json
 import time
 from pathlib import Path
 from typing import Any
 
 import logfire
 from tqdm import tqdm
+from treant.treant import ParseMethod, process_document
 
-from src.common.cache.doc_cache import DocumentCache
 from src.common.services.qdrant import QdrantStorageService
 from src.common.storage.storage_factory import StorageFactory
 from src.common.utils.config import config
@@ -17,7 +15,6 @@ from src.common.utils.constants import (
     OFFICE_FORMATS,
     TEXT_FORMATS,
     ChunkerStrategy,
-    ParseMethod,
     StorageType,
 )
 from src.common.utils.helper import separate_content, supported_extensions_list
@@ -26,8 +23,6 @@ from src.ingestion.chunking.chunk import BatchProcess, Chunk, build_parent_child
 from src.ingestion.chunking.chunker_factory import create_chunker
 from src.ingestion.chunking.chunking_config import ChunkingConfig
 from src.ingestion.embedding import EmbeddingService
-from src.ingestion.parser.docling_parser import DoclingParser
-from src.ingestion.parser.google_doc_ai import GoogleDocAI
 
 
 class Processor:
@@ -36,7 +31,6 @@ class Processor:
         tokenizer: Tokenizer,
         embedding_service: EmbeddingService,
         storage_service: QdrantStorageService,
-        cache_dir: str | None = None,
         max_concurrency: int = 4,
         kg_extractor=None,
         kg_store=None,
@@ -45,10 +39,6 @@ class Processor:
         self.storage_service = storage_service
         self._kg_extractor = kg_extractor
         self._kg_store = kg_store
-
-        self._cache = DocumentCache(
-            cache_dir=(Path(cache_dir) if hasattr(config, "cache_dir") else config.CACHE_DIR)
-        )
 
         self.tokenizer = tokenizer or TikTokenTokenizer(model_name="gpt-4o-mini")
 
@@ -97,16 +87,6 @@ class Processor:
 
         return supported_files
 
-    def get_parser_method(self, parser_type: str):
-        parser_name = parser_type.strip().lower()
-
-        if parser_name == ParseMethod.GOOGLE_DOC_AI:
-            return GoogleDocAI()
-        elif parser_name == ParseMethod.DOCLING:
-            return DoclingParser()
-        else:
-            raise ValueError(f"Unsupported Parser type: {parser_type}")
-
     def _select_chunking_strategy(self, file_path: Path) -> str:
         suffix = file_path.suffix.lower()
 
@@ -117,57 +97,6 @@ class Processor:
             return ChunkerStrategy.RECURSIVE_CHARACTER
 
         return ChunkerStrategy.FIXED
-
-    @staticmethod
-    def _hash_file_content(file_path: Path) -> str:
-        """
-        Return a BLAKE2b-256 hex digest of *file_path*'s full byte content.
-        """
-        hasher = hashlib.blake2b(digest_size=32)
-        with open(file_path, "rb") as fh:
-            for chunk in iter(lambda: fh.read(65_536), b""):
-                hasher.update(chunk)
-        return hasher.hexdigest()
-
-    def _generate_cache_key(self, file_path: Path, parse_method: str) -> str:
-        """
-        Build a cache key from the file's *content* hash + parse method.
-        """
-        content_hash = self._hash_file_content(file_path)
-
-        config_dict = {
-            "content_hash": content_hash,
-            "parse_method": parse_method,
-        }
-
-        config_str = json.dumps(config_dict, sort_keys=True)
-        return hashlib.sha256(config_str.encode()).hexdigest()
-
-    def _get_cached_result(self, cache_key: str, file_path: Path, parse_method: str):
-        return self._cache.get(cache_key)
-
-    def _store_cache_result(
-        self,
-        cache_key: str,
-        content_list: list[dict],
-        file_path: Path,
-        parser: str,
-        parse_method: str = None,
-    ):
-        self._cache.store(
-            cache_key, content_list, file_path, parse_method=parse_method, parser=parser
-        )
-
-    def _generate_doc_id(self, file_path: str | Path, read_bytes: int = 8192) -> str:
-        path = Path(file_path).resolve()
-        stat = path.stat()
-        hasher = hashlib.sha256()
-        hasher.update(str(stat.st_size).encode())
-
-        with open(path, "rb") as f:
-            hasher.update(f.read(read_bytes))
-
-        return hasher.hexdigest()[:24]
 
     def _interleave_chunks(
         self,
@@ -274,120 +203,6 @@ class Processor:
 
         return enriched
 
-    async def process_document(
-        self,
-        file_path: str | Path,
-        parse_method: ParseMethod,
-        parser: str | None = None,
-        display_stats: bool = False,
-        split_by_character: str | None = None,
-        split_by_character_only: str | None = None,
-        doc_id: str | None = None,
-        file_name: str | None = None,
-        **kwargs,
-    ):
-        """
-        Parse a single document. This is the sole per-file worker used both
-        for one-off parsing and, via process_document_batch, for batches.
-        """
-        file_path = Path(file_path)
-        file_size = file_path.stat().st_size
-        if file_size > config.MAX_UPLOAD_BYTES:
-            raise ValueError(
-                f"File too large: {file_size // 1024 // 1024} MB, "
-                f"maximum size is {config.MAX_UPLOAD_BYTES // 1024 // 1024} MB"
-            )
-
-        logfire.info(f"Starting document parsing: {parse_method.value} - {file_path}")
-
-        ext = file_path.suffix.lower()
-
-        cache_key = self._generate_cache_key(file_path, parse_method.value)
-        cache_result = self._get_cached_result(cache_key, file_path, parse_method.value)
-
-        if cache_result is not None:
-            logfire.info(f"Cache HIT - Returning cached result for {file_path}")
-            doc_id = self._generate_doc_id(file_path)
-            return cache_result, doc_id
-
-        try:
-            doc_parser = get_parser_method(parser_type=parse_method)
-
-            if not doc_parser.check_installation():
-                raise ImportError("Required package is not installed")
-
-            if ext == ".pdf":
-                logfire.info("Detected PDF file, parsing the pdf...")
-                content_list = await asyncio.to_thread(
-                    doc_parser.parse_pdf,
-                    file_path=file_path,
-                    method=parse_method.value,
-                    **kwargs,
-                )
-            elif ext in HTML_FORMATS:
-                logfire.info("Detected HTML file, parsing html...")
-                content_list = await asyncio.to_thread(
-                    doc_parser.parse_html,
-                    file_path=file_path,
-                    method=parse_method.value,
-                    **kwargs,
-                )
-            elif ext in OFFICE_FORMATS:
-                logfire.info("Detected office file, parsing document...")
-                content_list = await asyncio.to_thread(
-                    doc_parser.parse_doc,
-                    file_path=file_path,
-                    method=parse_method.value,
-                    **kwargs,
-                )
-            elif ext in TEXT_FORMATS:
-                logfire.info("Detected text file, parsing document...")
-                content_list = await asyncio.to_thread(
-                    doc_parser.parse_doc,
-                    file_path=file_path,
-                    method=parse_method.value,
-                    **kwargs,
-                )
-            else:
-                raise ValueError(
-                    f"Unsupported file format: {ext}. "
-                    f"Only supports PDF files, Office formats ({', '.join(OFFICE_FORMATS)}), "
-                    f"HTML formats ({', '.join(HTML_FORMATS)}), "
-                    f"and text formats ({', '.join(TEXT_FORMATS)})"
-                )
-
-        except Exception as e:
-            logfire.error(f"Error during parsing: {str(e)}")
-            raise
-
-        msg = f"Parsing {file_path} completed! Extracted {len(content_list)} content block"
-        logfire.info(msg)
-
-        if len(content_list) == 0:
-            raise ValueError("Parsing failed: No content extracted")
-
-        self._store_cache_result(cache_key, content_list, file_path, parse_method.value, parser)
-
-        doc_id = self._generate_doc_id(file_path)
-
-        if display_stats:
-            logfire.info("\n Content information: ")
-            logfire.info(f"* Total content in list: {len(content_list)}")
-
-            block_types: dict[str, int] = {}
-            for block in content_list:
-                if isinstance(block, dict):
-                    block_type = block.get("type", "Unknown")
-                    if isinstance(block_type, str):
-                        block_types[block_type] = block_types.get(block_type, 0) + 1
-
-            logfire.info("* Content block types: ")
-
-            for block_type, count in block_types.items():
-                logfire.info(f" - {block_type} : {count}")
-
-        return content_list, doc_id
-
     async def _process_one_guarded(
         self,
         file_path: str,
@@ -397,7 +212,7 @@ class Processor:
     ):
         async with semaphore:
             try:
-                content_list, doc_id = await self.process_document(
+                content_list, doc_id = await process_document(
                     file_path=file_path, parse_method=parse_method, **kwargs
                 )
                 return file_path, True, content_list, doc_id, None
@@ -494,7 +309,7 @@ class Processor:
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        content_list, doc_id = await self.process_document(
+        content_list, doc_id = await process_document(
             file_path=file_path,
             doc_id=doc_id,
             split_by_character=split_by_character,
@@ -626,14 +441,3 @@ class Processor:
                 for d in dead_letter
             ],
         }
-
-
-def get_parser_method(parser_type: str):
-    parser_name = parser_type.strip().lower()
-
-    if parser_name == ParseMethod.GOOGLE_DOC_AI:
-        return GoogleDocAI()
-    elif parser_name == ParseMethod.DOCLING:
-        return DoclingParser()
-    else:
-        raise ValueError(f"Unsupported Parser type: {parser_type}")
