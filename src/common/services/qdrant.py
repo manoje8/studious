@@ -342,3 +342,91 @@ class QdrantStorageService:
 
         logfire.info(f"Scrolled {len(all_chunks)} chunks from Qdrant")
         return all_chunks
+
+    async def get_chunks_by_ids(self, chunk_ids: list[str]) -> list[dict]:
+        """Fetch chunk payloads from Qdrant by ``doc_id:chunk_index`` identifiers.
+
+        Used by the KG retriever to resolve graph-traversed entity source
+        chunks back to their full text content.
+
+        Parameters
+        ----------
+        chunk_ids : list[str]
+            Identifiers in ``"<doc_id>:<chunk_index>"`` format.
+
+        Returns
+        -------
+        list[dict]
+            Chunk payloads with text, metadata, and a ``score`` of 1.0
+            (KG-sourced chunks have no vector similarity score).
+        """
+        if not chunk_ids:
+            return []
+
+        # Parse chunk_ids into (doc_id, chunk_index) pairs
+        filters: list[tuple[str, int]] = []
+        for cid in chunk_ids:
+            parts = cid.rsplit(":", 1)
+            if len(parts) == 2:
+                try:
+                    filters.append((parts[0], int(parts[1])))
+                except ValueError:
+                    logfire.warning("Invalid chunk_id format: {cid}", cid=cid)
+            else:
+                logfire.warning("Invalid chunk_id format: {cid}", cid=cid)
+
+        if not filters:
+            return []
+
+        results: list[dict] = []
+        for doc_id, chunk_index in filters:
+            try:
+                points, _ = await _with_retry(
+                    partial(
+                        self.client.scroll,
+                        collection_name=self.collection_name,
+                        scroll_filter=Filter(
+                            must=[
+                                FieldCondition(key="doc_id", match=MatchValue(value=doc_id)),
+                                FieldCondition(
+                                    key="chunk_index",
+                                    match=MatchValue(value=chunk_index),
+                                ),
+                            ]
+                        ),
+                        limit=1,
+                        with_payload=True,
+                        with_vectors=False,
+                    )
+                )
+                for point in points:
+                    results.append(
+                        {
+                            "text": point.payload.get("text", ""),
+                            "doc_id": point.payload.get("doc_id", ""),
+                            "chunk_index": point.payload.get("chunk_index"),
+                            "section_title": point.payload.get("section_title", ""),
+                            "source_file": point.payload.get("source_file", ""),
+                            "source": point.payload.get("source_file", ""),
+                            "section": point.payload.get("section_title", ""),
+                            "content_type": point.payload.get("content_type", "text"),
+                            "image_path": point.payload.get("image_path", ""),
+                            "page_numbers": point.payload.get("page_numbers", []),
+                            "parent_text": point.payload.get("parent_text", ""),
+                            "score": 1.0,  # KG-sourced chunks have no similarity score
+                        }
+                    )
+            except Exception as exc:
+                logfire.warning(
+                    "Failed to fetch chunk {doc_id}:{chunk_index}",
+                    doc_id=doc_id,
+                    chunk_index=chunk_index,
+                    error=str(exc),
+                )
+
+        logfire.info(
+            "get_chunks_by_ids",
+            requested=len(chunk_ids),
+            resolved=len(results),
+        )
+        return results

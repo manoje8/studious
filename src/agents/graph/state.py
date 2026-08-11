@@ -24,6 +24,11 @@ class State(TypedDict):
     accepted_chunks: list[dict]
     hop_decision: str  # "retrieve_again" | "sufficient" | "exhausted"
 
+    # knowledge graph
+    kg_entities_found: list[str]
+    kg_chunks: list[dict]
+    kg_traversal_paths: list[dict]
+
     final_answer: str
     sources: list[str]
     images: list[dict]
