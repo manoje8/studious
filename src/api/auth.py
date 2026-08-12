@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import HTTPException, status
@@ -54,7 +54,7 @@ class AuthHandler:
 
             payload = jwt.decode(token, config_api.SECRET_KEY, config_api.ALGORITHM)
             expire_timestamp = payload["exp"]
-            expire_time = datetime.fromtimestamp(expire_timestamp, timezone.utc)
+            expire_time = datetime.fromtimestamp(expire_timestamp, UTC)
 
             if datetime.now(UTC) > expire_time:
                 raise HTTPException(

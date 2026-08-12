@@ -107,7 +107,7 @@ class AdaptiveRetrievalConfig:
     def from_state(cls, state: dict) -> AdaptiveRetrievalConfig:
         """Build an adaptive config from the current graph state.
 
-        Resolution order (highest priority wins):
+        Resolution order (the highest priority wins):
 
         1. **Router explicit values** — ``state["classification"]["retrieval_strategy"]``
         2. **Category defaults** — looked up via ``state["question_category"]``

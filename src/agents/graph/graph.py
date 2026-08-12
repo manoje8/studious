@@ -10,6 +10,7 @@ from src.agents.graph.edges import (
     route_after_hop_check,
 )
 from src.agents.graph.nodes import (
+    annotate_low_confidence,
     direct_synthesize,
     faithfulness_check,
     grade,
@@ -24,25 +25,6 @@ from src.agents.graph.nodes import (
     synthesize,
 )
 from src.agents.graph.state import State
-
-_LOW_CONFIDENCE_PREFIX = (
-    "⚠️ *Low-confidence answer* — the response may not be fully grounded "
-    "in the retrieved documents.\n\n"
-)
-
-
-def _annotate_low_confidence(state: State) -> dict:
-    """
-    Soft-fail annotation node.
-
-    Prepends a disclaimer to the ``final_answer`` when the faithfulness gate
-    score falls below the configured threshold.  This keeps the graph from
-    silently dropping answers while still surfacing a client-visible signal.
-    """
-    answer = state.get("final_answer", "")
-    if not answer.startswith(_LOW_CONFIDENCE_PREFIX):
-        answer = _LOW_CONFIDENCE_PREFIX + answer
-    return {"final_answer": answer}
 
 
 def build_rag_graph(
@@ -74,7 +56,7 @@ def build_rag_graph(
         partial(handle_simple_response, synthesizer=synthesizer),
     )
     builder.add_node("rewrite_for_refinement", partial(rewrite_for_refinement))
-    builder.add_node("annotate_low_confidence", partial(_annotate_low_confidence))
+    builder.add_node("annotate_low_confidence", partial(annotate_low_confidence))
 
     if faithfulness_checker is not None:
         builder.add_node(

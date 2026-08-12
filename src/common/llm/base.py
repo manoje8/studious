@@ -267,7 +267,7 @@ class BaseLLM(ABC):
                     )
                     return response
 
-            except asyncio.TimeoutError as err:
+            except TimeoutError as err:
                 if attempt == self.max_retries:
                     raise LLMTimeoutError(
                         timeout_seconds=self.timeout_seconds,

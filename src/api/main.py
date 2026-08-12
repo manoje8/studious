@@ -131,12 +131,12 @@ async def lifespan(app: FastAPI):
             kg_store = KGStore(pool)
             await kg_store.setup()
             kg_extractor = KGExtractor(
-                llm_client=primary_gemini_fallback_groq,
+                llm_client=primary_groq_fallback_gemini,
                 batch_size=config.KG_EXTRACTION_BATCH_SIZE,
                 min_confidence=config.KG_MIN_CONFIDENCE,
             )
             kg_retriever = KGRetriever(
-                llm_client=primary_gemini_fallback_groq,
+                llm_client=primary_groq_fallback_gemini,
                 kg_store=kg_store,
                 storage_service=storage_service,
                 max_hops=config.KG_MAX_HOPS,

@@ -13,14 +13,79 @@ authors = [
 ]
 keywords = ["fastapi", "rag", "ai"]
 
-dependencies=[
-    "treant"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "python-dotenv",
+    "requests",
+    "pytz",
+    "nest-asyncio",
+    "streamlit",
+    "rank-bm25",
+
+    "openai",
+    "google-genai",
+    "cerebras-cloud-sdk",
+
+    "google-cloud-storage",
+    "google-cloud-aiplatform",
+    "google-cloud-discoveryengine",
+    "google-cloud-documentai",
+    "cloud-sql-python-connector",
+
+    "qdrant-client[fastembed]",
+    "flashrank",
+    "redis",
+    "redisvl",
+    "sqlalchemy",
+    "pg8000",
+    "psycopg[binary]",
+    "psycopg-pool",
+    "asyncpg",
+
+    "langchain",
+    "langgraph",
+    "langchain-text-splitters",
+    "langgraph-checkpoint-postgres",
+    "langchain-google-vertexai",
+    "langchain-groq",
+    "langchain-community",
+    "langchain-openai",
+    "pydantic>=2.0.0",
+
+    "unstructured",
+    "python-pptx",
+    "python-docx",
+    "pypdf",
+    "beautifulsoup4",
+    "docling",
+    "trafilatura",
+
+    "langsmith",
+    "logfire[fastapi,requests]",
+    "loguru",
+
+    "ascii-colors",
+    "pyyaml",
+    "tenacity",
+    "bcrypt",
+    "pyjwt",
+
+    "sentence-transformers",
+    "nltk",
+    "transformers",
+    "torch",
+
+    "treant @ git+https://github.com/manoje8/treant.git",
 ]
-[tool.uv.sources]
-treant = { git = "https://github.com/manoje8/treant.git"}
+
+[project.optional-dependencies]
+dev = ["ruff", "black", "pre-commit"]
+test = ["pytest", "pytest-asyncio"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
@@ -36,6 +101,7 @@ ignore = [
     "E402",
     "E501",
     "B008",
+    "UP046"
 ]
 
 [tool.ruff.lint.isort]
@@ -62,6 +128,7 @@ asyncio_mode = "auto"
 
 [tool.logfire]
 ignore_no_config = true
+
 
 [tool.setuptools.packages.find]
 where = ["."]

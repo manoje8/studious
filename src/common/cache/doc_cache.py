@@ -1,7 +1,7 @@
 import gzip
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import logfire
@@ -144,7 +144,7 @@ class DocumentCache:
             "parse_method": parse_method,
             "parser": parser,
             "block_count": len(content_list),
-            "cached_at": datetime.now(timezone.utc).isoformat(),
+            "cached_at": datetime.now(UTC).isoformat(),
             "content_hash": content_hash,
             "file_size": file_size,
         }

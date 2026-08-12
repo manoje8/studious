@@ -101,7 +101,7 @@ class HybridSearch:
         try:
             per_query_results = await asyncio.wait_for(_run(), timeout=timeout)
             logfire.info("hybrid_search_result", results=len(per_query_results))
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logfire.error(
                 "hybrid_search_timeout",
                 timeout_seconds=timeout,

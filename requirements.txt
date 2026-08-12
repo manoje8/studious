@@ -11,7 +11,7 @@ rank_bm25
 
 openai
 google-genai
-cerebras_cloud_sdk
+cerebras-cloud-sdk
 
 google-cloud-storage
 google-cloud-aiplatform
@@ -70,3 +70,5 @@ sentence-transformers
 nltk
 transformers
 torch
+
+pytest

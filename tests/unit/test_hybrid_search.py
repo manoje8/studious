@@ -1,4 +1,3 @@
-import asyncio
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -322,9 +321,7 @@ class TestHybridSearch:
         mock_embedding_service,
     ):
         """Test search timeout handling"""
-        mock_embedding_service.embed_single.side_effect = AsyncMock(
-            side_effect=asyncio.TimeoutError()
-        )
+        mock_embedding_service.embed_single.side_effect = AsyncMock(side_effect=TimeoutError())
 
         results = await hybrid_search.search(["test query"], timeout=0.1)
         assert results == []

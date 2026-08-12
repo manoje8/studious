@@ -136,7 +136,7 @@ class KGStore:
                         SELECT
                             canonical_key,
                             0 AS depth,
-                            ARRAY[canonical_key] AS path
+                            ARRAY[canonical_key]::varchar[] AS path
                         FROM kg_entities
                         WHERE canonical_key = ANY(%s)
 

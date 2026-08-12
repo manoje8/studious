@@ -7,6 +7,11 @@ from src.knowledge_graph.retriever import KGRetriever
 
 _CHUNK_PREVIEW_MAX_CHARS = 300
 
+_LOW_CONFIDENCE_PREFIX = (
+    "*Low-confidence answer* — the response may not be fully grounded "
+    "in the retrieved documents.\n\n"
+)
+
 
 def _build_structured_chunk_previews(chunks: list[dict]) -> str:
     """
@@ -72,12 +77,12 @@ async def kg_retrieve(state: State, kg_retriever: KGRetriever | None) -> dict:
     Retrieve chunks via knowledge graph traversal.
 
     Runs before the vector-based ``retrieve`` node.  Extracted entities and
-    their graph neighbourhoods are resolved to source chunks, which are
+    their graph neighborhoods are resolved to source chunks, which are
     pre-seeded into ``accepted_chunks`` so the vector retriever can focus
     on filling remaining gaps.
 
     When *kg_retriever* is ``None`` (KG disabled), the node is a transparent
-    pass-through that returns empty KG state.
+    pass-through that returns an empty KG state.
     """
     if kg_retriever is None:
         return {
@@ -346,3 +351,17 @@ async def faithfulness_check(state: State, checker: FaithfulnessChecker) -> dict
         "faithfulness_passed": result["passed"],
         "faithfulness_skipped": result.get("skipped", False),
     }
+
+
+def annotate_low_confidence(state: State) -> dict:
+    """
+    Soft-fail annotation node.
+
+    Prepends a disclaimer to the ``final_answer`` when the faithfulness gate
+    score falls below the configured threshold.  This keeps the graph from
+    silently dropping answers while still surfacing a client-visible signal.
+    """
+    answer = state.get("final_answer", "")
+    if not answer.startswith(_LOW_CONFIDENCE_PREFIX):
+        answer = _LOW_CONFIDENCE_PREFIX + answer
+    return {"final_answer": answer}

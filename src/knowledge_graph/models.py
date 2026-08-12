@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class EntityType(str, Enum):
+class EntityType(StrEnum):
     PERSON = "person"
     ORGANIZATION = "organization"
     LOCATION = "location"
@@ -18,7 +18,7 @@ class EntityType(str, Enum):
     OTHER = "other"
 
 
-class RelationType(str, Enum):
+class RelationType(StrEnum):
     REPORTS_TO = "reports_to"
     MANAGES = "manages"
     WORKS_AT = "works_at"

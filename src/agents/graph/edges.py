@@ -11,9 +11,9 @@ def route_after_classify(state: State) -> str:
 
     Routing table
     -------------
-    chitchat / meta          → simple_response  (no retrieval)
-    summarization (conv.)    → synthesize        (history only, no retrieval)
-    everything else          → plan              (full retrieve → grade → synthesize)
+    chitchat / meta -> simple_response -> (no retrieval)
+    summarization (conv.) -> synthesize -> (history only, no retrieval)
+    everything else -> plan -> (full retrieve → grade → synthesize)
     """
     category = state.get("question_category", "factual").lower()
 
@@ -104,11 +104,11 @@ def route_after_faithfulness(state: State) -> str:
 
     Gate decision
     -------------
-    - ``skipped=True``          → the answer came from a no-retrieval path
+    - ``skipped=True``-> the answer came from a no-retrieval path
       (chitchat, simple response, …).  Pass straight through.
-    - ``faithfulness_passed``   → score met or exceeded the configured
-      threshold.  Answer is clean — route to END.
-    - ``not faithfulness_passed`` → score below threshold.  The final_answer
+    - ``faithfulness_passed`` -> score met or exceeded the configured
+      threshold.  Answer is clean - route to END.
+    - ``not faithfulness_passed`` -> score below a threshold.  The final_answer
       is annotated in-state with a low-confidence prefix so the client can
       surface a disclaimer.  Still routes to END (soft-fail) to avoid
       silently dropping responses.
@@ -117,7 +117,7 @@ def route_after_faithfulness(state: State) -> str:
     ---------------
     Both branches currently terminate at ``END``.  The distinction is kept
     as separate symbolic names (``"pass"`` / ``"fail_soft"``) so the graph
-    can be extended later to add a hard-fail branch (e.g. re-synthesize or
+    can be extended later to add a hard-fail branch (e.g., re-synthesize or
     return a canned response) without changing the edge function signature.
     """
     skipped: bool = state.get("faithfulness_skipped", False)
