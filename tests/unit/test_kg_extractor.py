@@ -4,8 +4,8 @@ Unit tests for KGExtractor — LLM-based entity/relationship extraction.
 
 import pytest
 
-from src.knowledge_graph.extractor import KGExtractor
-from src.knowledge_graph.models import EntityType, RelationType
+from medici.knowledge_graph.extractor import KGExtractor
+from medici.knowledge_graph.models import EntityType, RelationType
 
 
 class MockLLMResponse:

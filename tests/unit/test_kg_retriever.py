@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.knowledge_graph.retriever import KGRetriever
+from medici.knowledge_graph.retriever import KGRetriever
 
 
 class MockLLMResponse:

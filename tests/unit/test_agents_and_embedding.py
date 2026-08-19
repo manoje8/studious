@@ -12,13 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.agent_model import RetrievalDecision, RetrievalRound
-from src.agents.agentic.query_expander import QueryExpander
-from src.agents.agentic.synthesizer import SynthesizerAgent
-from src.agents.retrieval import RetrievalAgent
-from src.common.llm.base import LLMResponse
-from src.ingestion.chunking.chunk import Chunk
-from src.ingestion.embedding import EmbeddedChunk, EmbeddingService
+from medici.agents.agent_model import RetrievalDecision, RetrievalRound
+from medici.agents.agentic.query_expander import QueryExpander
+from medici.agents.agentic.synthesizer import SynthesizerAgent
+from medici.agents.retrieval import RetrievalAgent
+from medici.common.llm.base import LLMResponse
+from medici.ingestion.chunking.chunk import Chunk
+from medici.ingestion.embedding import EmbeddedChunk, EmbeddingService
 
 
 def _base_state(**overrides) -> dict:
@@ -376,9 +376,9 @@ class TestEmbeddingService:
     @pytest.fixture
     def mock_genai(self):
         with (
-            patch("src.ingestion.embedding.genai") as mock_genai_module,
-            patch("src.ingestion.embedding.config") as mock_config,
-            patch("src.ingestion.embedding.logfire"),
+            patch("medici.ingestion.embedding.genai") as mock_genai_module,
+            patch("medici.ingestion.embedding.config") as mock_config,
+            patch("medici.ingestion.embedding.logfire"),
         ):
             mock_config.PROJECT_ID = "test-proj"
             mock_config.LOCATION = "us-central1"

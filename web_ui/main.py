@@ -12,7 +12,7 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.common.utils.constants import ParseMethod
+from medici.common.utils.constants import ParseMethod
 
 load_dotenv(override=True)
 

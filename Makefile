@@ -17,7 +17,7 @@ isort:
 	ruff check --select I --fix .
 
 server-run:
-	python src/api/main.py
+	python -m medici.api.main
 
 ui-run:
 	streamlit run web_ui/main.py

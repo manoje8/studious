@@ -15,7 +15,7 @@ import json
 import os
 from pathlib import Path
 
-from src.common.cache.doc_cache import DocumentCache
+from medici.common.cache.doc_cache import DocumentCache
 
 DUMMY_CONTENT = [{"type": "text", "text": "hello world"}]
 PARSE_METHOD = "docling"

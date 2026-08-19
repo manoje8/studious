@@ -10,7 +10,7 @@ Covers:
 
 from unittest.mock import MagicMock, patch
 
-from src.common.utils.helper import (
+from medici.common.utils.helper import (
     has_internet,
     separate_content,
     supported_extensions_list,
@@ -157,19 +157,19 @@ class TestCheckEnv:
     def test_env_file_present_returns_true(self, tmp_path):
         env_file = tmp_path / ".env"
         env_file.write_text("KEY=value\n")
-        with patch("src.common.utils.helper.os.path.exists", return_value=True):
-            from src.common.utils.helper import check_env
+        with patch("medici.common.utils.helper.os.path.exists", return_value=True):
+            from medici.common.utils.helper import check_env
 
             result = check_env()
         assert result is True
 
     def test_env_file_absent_non_tty_returns_true(self):
         with (
-            patch("src.common.utils.helper.os.path.exists", return_value=False),
+            patch("medici.common.utils.helper.os.path.exists", return_value=False),
             patch("sys.stdin") as mock_stdin,
         ):
             mock_stdin.isatty.return_value = False
-            from src.common.utils.helper import check_env
+            from medici.common.utils.helper import check_env
 
             result = check_env()
         assert result is True

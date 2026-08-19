@@ -4,7 +4,7 @@ Unit tests for Knowledge Graph data models.
 
 import pytest
 
-from src.knowledge_graph.models import (
+from medici.knowledge_graph.models import (
     Entity,
     EntityType,
     KGExtractionResult,

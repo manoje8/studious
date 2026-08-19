@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.common.utils.tokenizer import TikTokenTokenizer, Tokenizer, TokenizerInterface
+from medici.common.utils.tokenizer import TikTokenTokenizer, Tokenizer, TokenizerInterface
 
 # ---------------------------------------------------------------------------
 # TokenizerInterface (ABC)
@@ -119,7 +119,7 @@ class TestTikTokenTokenizer:
                 # Re-import to trigger the import check
                 import importlib
 
-                import src.common.utils.tokenizer as tok_mod
+                import medici.common.utils.tokenizer as tok_mod
 
                 importlib.reload(tok_mod)
                 tok_mod.TikTokenTokenizer()

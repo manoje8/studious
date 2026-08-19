@@ -7,7 +7,7 @@ verify the actual seam contracts rather than mocking both sides independently.
 
 import pytest
 
-from src.ingestion.chunking.chunk import Chunk
+from medici.ingestion.chunking.chunk import Chunk
 
 
 @pytest.fixture

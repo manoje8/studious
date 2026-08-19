@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.graph.runner import GraphPipeline
-from src.agents.memory.conversation_model import ConversationSession
+from medici.agents.graph.runner import GraphPipeline
+from medici.agents.memory.conversation_model import ConversationSession
 
 
 def _make_session(session_id: str = "sess-1", user_id: str = "user-1") -> ConversationSession:

@@ -14,8 +14,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.agentic.grader import _GRADE_MAX_RETRIES, GraderAgent
-from src.common.llm.base import LLMContentError
+from medici.agents.agentic.grader import _GRADE_MAX_RETRIES, GraderAgent
+from medici.common.llm.base import LLMContentError
 
 
 def _make_llm(return_value=None, side_effect=None):

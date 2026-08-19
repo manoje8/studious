@@ -3,39 +3,50 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "Medici"
-description = "Agentic Retrieval-Augmented Generation"
-version = "0.0.2"
+name = "medici"
+description = "Agentic Retrieval-Augmented Generation library"
+version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
 authors = [
     {name="Mano Deepan", email="manodeepan2001@gmail.com"}
 ]
-keywords = ["fastapi", "rag", "ai"]
+keywords = ["rag", "ai", "agents", "retrieval-augmented-generation", "langchain", "langgraph"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
 
+# --- Core dependencies (minimal for library use) ---
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "python-multipart",
+    "pydantic>=2.0.0",
     "python-dotenv",
     "requests",
     "pytz",
-    "nest-asyncio",
-    "streamlit",
+    "pyyaml",
+    "tenacity",
+    "loguru",
     "rank-bm25",
+    "nest-asyncio",
+    "ascii-colors",
 
+    # LLM
     "openai",
     "google-genai",
-    "cerebras-cloud-sdk",
+    "langchain",
+    "langgraph",
+    "langchain-text-splitters",
 
-    "google-cloud-storage",
-    "google-cloud-aiplatform",
-    "google-cloud-discoveryengine",
-    "google-cloud-documentai",
-    "cloud-sql-python-connector",
-
+    # Vector DB
     "qdrant-client[fastembed]",
     "flashrank",
+
+    # Databases
     "redis",
     "redisvl",
     "sqlalchemy",
@@ -44,45 +55,74 @@ dependencies = [
     "psycopg-pool",
     "asyncpg",
 
-    "langchain",
-    "langgraph",
-    "langchain-text-splitters",
-    "langgraph-checkpoint-postgres",
-    "langchain-google-vertexai",
-    "langchain-groq",
-    "langchain-community",
-    "langchain-openai",
-    "pydantic>=2.0.0",
-
-    "unstructured",
-    "python-pptx",
-    "python-docx",
-    "pypdf",
-    "beautifulsoup4",
-    "docling",
-    "trafilatura",
-
-    "langsmith",
-    "logfire[fastapi,requests]",
-    "loguru",
-
-    "ascii-colors",
-    "pyyaml",
-    "tenacity",
-    "bcrypt",
-    "pyjwt",
-
+    # Embeddings & NLP
     "sentence-transformers",
     "nltk",
     "transformers",
     "torch",
 
+    # Parsing (basic)
+    "pypdf",
+    "beautifulsoup4",
+
+    # Auth
+    "bcrypt",
+    "pyjwt",
+
+    # Internal
     "treant @ git+https://github.com/manoje8/treant.git",
 ]
 
 [project.optional-dependencies]
+# FastAPI server
+api = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+]
+# Streamlit UI
+ui = ["streamlit"]
+# Google Cloud integrations (Document AI, Vertex AI, GCS)
+gcp = [
+    "google-cloud-storage",
+    "google-cloud-aiplatform",
+    "google-cloud-discoveryengine",
+    "google-cloud-documentai",
+    "cloud-sql-python-connector",
+    "langchain-google-vertexai",
+]
+# Additional LLM providers
+groq = ["langchain-groq"]
+cerebras = ["cerebras-cloud-sdk"]
+# Document parsing extras
+docling = ["docling"]
+documents = ["python-pptx", "python-docx", "unstructured", "trafilatura"]
+# Knowledge graph (PostgreSQL checkpoint)
+graph = [
+    "langgraph-checkpoint-postgres",
+    "langchain-community",
+    "langchain-openai",
+]
+# Observability
+observability = [
+    "langsmith",
+    "logfire[fastapi,requests]",
+]
+# Development
 dev = ["ruff", "black", "pre-commit"]
 test = ["pytest", "pytest-asyncio"]
+# Everything
+all = [
+    "medici[api,ui,gcp,groq,cerebras,docling,documents,graph,observability]",
+]
+
+[project.urls]
+Homepage = "https://github.com/manoje8/medici"
+Repository = "https://github.com/manoje8/medici"
+Issues = "https://github.com/manoje8/medici/issues"
+
+[project.scripts]
+medici = "medici.ingestion.cli:main"
 
 [tool.ruff]
 target-version = "py312"
@@ -105,7 +145,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src"]
+known-first-party = ["medici"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -131,9 +171,9 @@ ignore_no_config = true
 
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+where = ["src"]
+include = ["medici*"]
 
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.json", "*.env.example"]
+"*" = ["*.yaml", "*.yml", "*.json", "*.sql", "*.env.example"]

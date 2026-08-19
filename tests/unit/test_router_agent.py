@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.agentic.router import RouterAgent
+from medici.agents.agentic.router import RouterAgent
 
 # ---------------------------------------------------------------------------
 # Fixtures

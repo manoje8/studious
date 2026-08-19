@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.agents.graph.nodes import kg_retrieve
+from medici.agents.graph.nodes import kg_retrieve
 
 
 @pytest.fixture

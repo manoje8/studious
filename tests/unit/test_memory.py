@@ -13,12 +13,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.agentic.query_rewriter import QueryRewriter
-from src.agents.memory.conversation_model import (
+from medici.agents.agentic.query_rewriter import QueryRewriter
+from medici.agents.memory.conversation_model import (
     ConversationSession,
     EpisodicSummary,
 )
-from src.common.llm.base import LLMResponse
+from medici.common.llm.base import LLMResponse
 
 # Data Models
 
@@ -90,7 +90,7 @@ class TestConversationSession:
 #
 #     @pytest.fixture
 #     def manager(self):
-#         with patch("src.agents.memory.short_term.redis") as mock_redis:
+#         with patch("medici.agents.memory.short_term.redis") as mock_redis:
 #             mock_client = MagicMock()
 #             mock_client.setex = AsyncMock()
 #             mock_redis.from_url.return_value = mock_client

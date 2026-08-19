@@ -11,13 +11,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from src.api.rate_limiter import AsyncRateLimiterBackend, RateLimiter, _resolve_identity
+from medici.api.rate_limiter import AsyncRateLimiterBackend, RateLimiter, _resolve_identity
 
 
 @pytest.fixture()
 def backend(monkeypatch):
     """Return an AsyncRateLimiterBackend with a mocked Redis connection."""
-    with patch("src.api.rate_limiter.aioredis.from_url") as mock_from_url:
+    with patch("medici.api.rate_limiter.aioredis.from_url") as mock_from_url:
         mock_redis = AsyncMock()
         mock_from_url.return_value = mock_redis
         b = AsyncRateLimiterBackend(redis_url="redis://localhost:6379")
@@ -111,7 +111,7 @@ class TestResolveIdentity:
         creds = MagicMock()
         creds.credentials = "valid_token"
 
-        with patch("src.api.auth.auth_handler") as mock_auth:
+        with patch("medici.api.auth.auth_handler") as mock_auth:
             mock_auth.validate_token.return_value = {"user_name": "alice"}
             identity = _resolve_identity(req, credentials=creds)
 
@@ -122,7 +122,7 @@ class TestResolveIdentity:
         creds = MagicMock()
         creds.credentials = "bad_token"
 
-        with patch("src.api.auth.auth_handler") as mock_auth:
+        with patch("medici.api.auth.auth_handler") as mock_auth:
             mock_auth.validate_token.side_effect = HTTPException(status_code=401)
             identity = _resolve_identity(req, credentials=creds)
 

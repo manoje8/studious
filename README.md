@@ -1,4 +1,4 @@
-# Medici — Agentic RAG Pipeline
+# Medici - Agentic RAG Pipeline
 
 > A production-grade Retrieval-Augmented Generation system orchestrated by a LangGraph state machine. Supports multi-turn memory, hybrid search, self-correcting retrieval loops, and multi-format document ingestion.
 
@@ -8,12 +8,12 @@
 
 **Medici** routes every user query through a chain of specialised LLM agents:
 
-1. **QueryRewriter** — resolves coreferences from Redis session history before routing.
-2. **RouterAgent** — classifies the query into one of 8 categories: `factual`, `comparative`, `analytical`, `summarization`, `procedural`, `clarification`, `chitchat`, `meta`.
-3. **PlannerAgent** — decomposes complex queries into 2–4 focused sub-questions.
-4. **RetrievalAgent** — runs hybrid search (dense + BM25 + RRF + FlashRank re-ranking), then self-evaluates: `sufficient | refine_query | expand_search | exhausted`. Loops up to `MAX_RETRIEVAL_ROUND` times per sub-question; a global hard cap of 6 steps prevents runaway loops.
-5. **GraderAgent** — post-filters retrieved chunks for relevance before synthesis; uses an `asyncio.Semaphore` to cap concurrent LLM calls.
-6. **SynthesizerAgent** — selects from 7 category-specific prompt strategies, wraps context in `<retrieved_context>` XML tags to block prompt injection, and enforces source citations.
+1. **QueryRewriter** - resolves coreferences from Redis session history before routing.
+2. **RouterAgent** - classifies the query into one of 8 categories: `factual`, `comparative`, `analytical`, `summarization`, `procedural`, `clarification`, `chitchat`, `meta`.
+3. **PlannerAgent** - decomposes complex queries into 2–4 focused sub-questions.
+4. **RetrievalAgent** - runs hybrid search (dense + BM25 + RRF + FlashRank re-ranking), then self-evaluates: `sufficient | refine_query | expand_search | exhausted`. Loops up to `MAX_RETRIEVAL_ROUND` times per sub-question; a global hard cap of 6 steps prevents runaway loops.
+5. **GraderAgent** - post-filters retrieved chunks for relevance before synthesis; uses an `asyncio.Semaphore` to cap concurrent LLM calls.
+6. **SynthesizerAgent** - selects from 7 category-specific prompt strategies, wraps context in `<retrieved_context>` XML tags to block prompt injection, and enforces source citations.
 
 Simple queries (`chitchat`, `meta`) short-circuit directly to a response. Low-complexity `factual` queries go straight to synthesis without planning.
 
@@ -26,9 +26,9 @@ Simple queries (`chitchat`, `meta`) short-circuit directly to a response. Low-co
 | API                                      | FastAPI + Uvicorn                                                        |
 | Graph Orchestration                      | LangGraph `StateGraph`                                                   |
 | Graph Checkpointing                      | LangGraph PostgreSQL checkpointer (psycopg async pool)                   |
-| LLM — routing / grading / retrieval eval | Groq `llama-3.3-70b-versatile`                                           |
-| LLM — planning / rewriting / expansion   | Google Gemini `gemini-2.0-flash`                                         |
-| LLM — additional provider                | Cerebras `llama3.1-70b`                                                  |
+| LLM - routing / grading / retrieval eval | Groq `llama-3.3-70b-versatile`                                           |
+| LLM - planning / rewriting / expansion   | Google Gemini `gemini-2.0-flash`                                         |
+| LLM - additional provider                | Cerebras `llama3.1-70b`                                                  |
 | Vector Store                             | Qdrant (async, cosine similarity, UUID5 idempotent IDs)                  |
 | Sparse Search                            | BM25 (`rank-bm25`), rebuilt in-memory at startup                         |
 | Fusion                                   | Reciprocal Rank Fusion (RRF)                                             |
@@ -38,9 +38,9 @@ Simple queries (`chitchat`, `meta`) short-circuit directly to a response. Low-co
 | Short-term Memory                        | Redis (2-hour TTL session store)                                         |
 | Long-term Memory                         | PostgreSQL `episodic_memories` table (LLM-compressed summaries)          |
 | Embedding Cache                          | PostgreSQL-backed, up to 50 k entries                                    |
-| Semantic Query Cache                     | Redis vector cache — returns cached answers for near-duplicate queries   |
+| Semantic Query Cache                     | Redis vector cache - returns cached answers for near-duplicate queries   |
 | Parse Cache                              | Filesystem gzip cache keyed by file path + mtime + parser config         |
-| Retry / Resilience                       | tenacity — 3 attempts, exponential back-off + jitter on all Qdrant calls |
+| Retry / Resilience                       | tenacity - 3 attempts, exponential back-off + jitter on all Qdrant calls |
 | Observability                            | Logfire (structured traces), LangSmith (optional)                        |
 | Auth                                     | JWT (`SECRET_KEY` / `HS256`); guest mode when no accounts are configured |
 | Dev tooling                              | Ruff, pre-commit                                                         |
@@ -77,29 +77,56 @@ QdrantStorageService.upsert_embedded_chunks()
 
 ---
 
-## Getting Started
+## Installation
+
+### As a library dependency
+
+```bash
+# Core library only
+pip install "medici @ git+https://github.com/manoje8/medici.git"
+
+# With optional extras
+pip install "medici[api] @ git+https://github.com/manoje8/medici.git"          # + FastAPI server
+pip install "medici[gcp,docling] @ git+https://github.com/manoje8/medici.git"  # + Google Cloud + Docling
+pip install "medici[all] @ git+https://github.com/manoje8/medici.git"          # everything
+```
+
+Available extras: `api`, `ui`, `gcp`, `groq`, `cerebras`, `docling`, `documents`, `graph`, `observability`, `all`
+
+### Library Usage (Quick Start)
+
+```python
+from medici.ingestion import Processor, EmbeddingService
+from medici.common.llm import GeminiClient, GroqClient
+from medici.common.services import QdrantStorageService, HybridSearch
+from medici.agents import GraphPipeline, RetrievalAgent, RouterAgent
+from medici.knowledge_graph import KGExtractor, KGStore
+```
+
+---
+
+## Getting Started (Full Application)
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12+
 - Qdrant (Cloud or local Docker)
 - Redis
 - PostgreSQL
 - Google Cloud project with **Document AI** and **Vertex AI** enabled
 - Groq API key and/or Gemini API key
 
-### Local install
+### Local development
 
 ```bash
 git clone https://github.com/manoje8/medici.git
-cd advanced_rag
+cd medici
 
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
 
-pip install -r requirements.txt
-pip install -e .
-
+pip install -e ".[all,dev,test]"
 pre-commit install
 ```
 
@@ -175,14 +202,14 @@ LANGSMITH_API_KEY=
 ## Running
 
 ```bash
-make server-run           # python src/api/main.py  →  http://localhost:8000
+make server-run           # python -m medici.api.main  →  http://localhost:8000
 
-make ui-run               # streamlit run main.py  →  http://localhost:8501
+make ui-run               # streamlit run web_ui/main.py  →  http://localhost:8501
 
-# CLI — parse, ingest, or query without the API
-python -m src.ingestion.cli parse  data/file.pdf --display-stats
-python -m src.ingestion.cli ingest data/file.pdf --chunking-strategy structure
-python -m src.ingestion.cli query  "What is multi-head attention?" --top-k 5
+# CLI - parse, ingest, or query without the API
+medici parse  data/file.pdf --display-stats
+medici ingest data/file.pdf --chunking-strategy structure
+medici query  "What is multi-head attention?" --top-k 5
 ```
 
 ---
