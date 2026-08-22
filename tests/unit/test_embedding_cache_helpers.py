@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from src.common.cache.embedding_cache import (
+from medici.common.cache.embedding_cache import (
     CacheStats,
     EmbeddingCache,
     _hash_text,

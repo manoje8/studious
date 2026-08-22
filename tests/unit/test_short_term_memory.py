@@ -14,7 +14,7 @@ import json
 
 import pytest
 
-from src.agents.memory.short_term import ShortTermMemoryManager
+from medici.agents.memory.short_term import ShortTermMemoryManager
 
 # ---------------------------------------------------------------------------
 # Helpers: fake Redis using fakeredis

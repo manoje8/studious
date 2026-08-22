@@ -19,9 +19,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.agents.graph.runner import GraphPipeline
-from src.agents.memory.conversation_model import ConversationSession
-from src.agents.memory.short_term import ShortTermMemoryManager
+from medici.agents.graph.runner import GraphPipeline
+from medici.agents.memory.conversation_model import ConversationSession
+from medici.agents.memory.short_term import ShortTermMemoryManager
 
 
 def _make_session(user_id: str = "user-1") -> ConversationSession:
@@ -31,7 +31,7 @@ def _make_session(user_id: str = "user-1") -> ConversationSession:
 def _make_manager_with_mock_redis() -> tuple[ShortTermMemoryManager, AsyncMock]:
     """Return (manager, mock_redis_client) with redis patched at instantiation."""
     mock_redis = AsyncMock()
-    with patch("src.agents.memory.short_term.redis") as mock_redis_mod:
+    with patch("medici.agents.memory.short_term.redis") as mock_redis_mod:
         mock_redis_mod.from_url.return_value = mock_redis
         manager = ShortTermMemoryManager(redis_url="redis://localhost:6379")
     return manager, mock_redis

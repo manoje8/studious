@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.agentic.synthesizer import (
+from medici.agents.agentic.synthesizer import (
     _FIREWALL_PREAMBLE,
     _NO_CONTEXT_MSG,
     SynthesizerAgent,
@@ -128,7 +128,7 @@ class TestBuildContextTokenBudget:
         chunks = [_make_chunk(text="short")]
         state = _make_state(chunks=chunks)
 
-        from src.agents.agentic.synthesizer import config
+        from medici.agents.agentic.synthesizer import config
 
         with patch.object(config, "MAX_CONTEXT_CHARS", 500):
             result = _build_context(state)
@@ -141,7 +141,7 @@ class TestBuildContextTokenBudget:
         chunks = [_make_chunk(text=big_text, section=f"S{i}") for i in range(10)]
         state = _make_state(chunks=chunks)
 
-        with patch("src.agents.agentic.synthesizer.logfire") as mock_logger:
+        with patch("medici.agents.agentic.synthesizer.logfire") as mock_logger:
             _build_context(state, max_chars=500)
             mock_logger.warning.assert_called_once()
             assert "budget" in mock_logger.warning.call_args[0][0].lower()
@@ -414,13 +414,13 @@ class TestGetHelper:
         assert _get(state, "question_category") is None
 
     def test_dataclass_state(self):
-        from src.agents.agent_model import AgentState
+        from medici.agents.agent_model import AgentState
 
         state = AgentState(original_question="test")
         assert _get(state, "original_question") == "test"
 
     def test_dataclass_attr_override(self):
-        from src.agents.agent_model import AgentState
+        from medici.agents.agent_model import AgentState
 
         state = AgentState(original_question="test")
         assert _get(state, "q", attr="original_question") == "test"

@@ -8,14 +8,14 @@ from unittest.mock import AsyncMock, mock_open, patch
 
 import pytest
 
-from src.knowledge_graph.models import (
+from medici.knowledge_graph.models import (
     Entity,
     EntityType,
     KGExtractionResult,
     Relationship,
     RelationType,
 )
-from src.knowledge_graph.store import KGStore
+from medici.knowledge_graph.store import KGStore
 
 
 class MockCursor:

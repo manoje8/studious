@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.agentic.planner import PlannerAgent
+from medici.agents.agentic.planner import PlannerAgent
 
 
 @pytest.fixture

@@ -18,7 +18,7 @@ COPY requirements.txt pyproject.toml README.md ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-COPY src ./src
+COPY medici ./medici
 RUN pip install --no-cache-dir -e . --no-deps
 
 RUN useradd --create-home --uid 1000 appuser
@@ -41,4 +41,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8000/health || exit 1
 
 
-CMD ["python", "src/api/main.py"]
+CMD ["python", "-m", "medici.api.main"]

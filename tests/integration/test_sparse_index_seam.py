@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.common.services.sparse_index import SparseSearchIndex
-from src.common.utils.helper import bootstrap_sparse_index
+from medici.common.services.sparse_index import SparseSearchIndex
+from medici.common.utils.helper import bootstrap_sparse_index
 
 
 @pytest.mark.integration

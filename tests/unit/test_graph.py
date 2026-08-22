@@ -13,12 +13,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.graph.edges import (
+from medici.agents.graph.edges import (
     route_after_classify,
     route_after_grade,
     route_after_hop_check,
 )
-from src.agents.graph.nodes import (
+from medici.agents.graph.nodes import (
     grade,
     hop_check,
     plan,

@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.common.cache.semantic_cache import CacheEntry, SemanticQueryCache
+from medici.common.cache.semantic_cache import CacheEntry, SemanticQueryCache
 
 # ---------------------------------------------------------------------------
 # Helpers

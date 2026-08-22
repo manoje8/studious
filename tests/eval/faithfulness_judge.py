@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logfire
 
-from src.common.llm.base import BaseLLM
+from medici.common.llm.base import BaseLLM
 
 
 async def judge_faithfulness(

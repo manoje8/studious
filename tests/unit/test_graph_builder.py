@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.graph.graph import build_rag_graph
+from medici.agents.graph.graph import build_rag_graph
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ class TestBuildRagGraph:
 
     async def test_compile_graph_with_postgres_calls_setup(self, mock_agents):
         """compile_graph_with_postgres should call checkpointer.setup()."""
-        from src.agents.graph.graph import compile_graph_with_postgres
+        from medici.agents.graph.graph import compile_graph_with_postgres
 
         mock_pool = MagicMock()
         mock_checkpointer = MagicMock()
@@ -80,10 +80,10 @@ class TestBuildRagGraph:
 
         with (
             patch(
-                "src.agents.graph.graph.AsyncPostgresSaver",
+                "medici.agents.graph.graph.AsyncPostgresSaver",
                 return_value=mock_checkpointer,
             ),
-            patch("src.agents.graph.graph.build_rag_graph", return_value=mock_builder),
+            patch("medici.agents.graph.graph.build_rag_graph", return_value=mock_builder),
         ):
             result = await compile_graph_with_postgres(pool=mock_pool, **mock_agents)
 

@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.common.llm.base import BaseLLM, LLMContentError, LLMParseError, LLMResponse
-from src.common.llm.gemini import GeminiClient
-from src.common.llm.groq import GroqClient
+from medici.common.llm.base import BaseLLM, LLMContentError, LLMParseError, LLMResponse
+from medici.common.llm.gemini import GeminiClient
+from medici.common.llm.groq import GroqClient
 
 
 class TestLLMResponse:
@@ -113,7 +113,7 @@ class TestBaseLLMComplete:
 
         llm = self._make_llm(InvalidArgument("Invalid generation config"))
 
-        with patch("src.common.llm.base.asyncio.sleep") as mock_sleep:
+        with patch("medici.common.llm.base.asyncio.sleep") as mock_sleep:
             with pytest.raises(LLMContentError, match="Invalid generation config"):
                 await llm.complete("some prompt")
 
@@ -127,7 +127,7 @@ class TestBaseLLMComplete:
 
         llm = self._make_llm(PermissionDenied("API key does not have permission"))
 
-        with patch("src.common.llm.base.asyncio.sleep") as mock_sleep:
+        with patch("medici.common.llm.base.asyncio.sleep") as mock_sleep:
             with pytest.raises(LLMContentError, match="API key does not have permission"):
                 await llm.complete("some prompt")
 
@@ -140,7 +140,7 @@ class TestBaseLLMComplete:
 
         llm = self._make_llm(Unauthenticated("Invalid API key"))
 
-        with patch("src.common.llm.base.asyncio.sleep") as mock_sleep:
+        with patch("medici.common.llm.base.asyncio.sleep") as mock_sleep:
             with pytest.raises(LLMContentError, match="Invalid API key"):
                 await llm.complete("some prompt")
 
@@ -155,7 +155,7 @@ class TestBaseLLMComplete:
 
         llm = self._make_llm(ServiceUnavailable("overloaded"), max_retries=1)
 
-        with patch("src.common.llm.base.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch("medici.common.llm.base.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
             with pytest.raises(LLMContentError):
                 await llm.complete("some prompt")
 
@@ -173,8 +173,8 @@ class TestGeminiClient:
     def mock_genai(self):
         """Patch google.genai.Client so no real API calls happen."""
         with (
-            patch("src.common.llm.gemini.genai") as mock_genai_module,
-            patch("src.common.llm.gemini.config") as mock_config,
+            patch("medici.common.llm.gemini.genai") as mock_genai_module,
+            patch("medici.common.llm.gemini.config") as mock_config,
         ):
             mock_config.GEMINI_API_KEY = "test-api-key"
             mock_client = MagicMock()
@@ -260,8 +260,8 @@ class TestGroqClientSystemRole:
     def mock_groq_client(self):
         """Patch ChatGroq so no real API calls happen."""
         with (
-            patch("src.common.llm.groq.ChatGroq") as mock_chat_groq,
-            patch("src.common.llm.groq.config") as mock_config,
+            patch("medici.common.llm.groq.ChatGroq") as mock_chat_groq,
+            patch("medici.common.llm.groq.config") as mock_config,
         ):
             mock_config.GROQ_API_KEY = "test-groq-key"
             mock_instance = MagicMock()
@@ -320,8 +320,8 @@ class TestGeminiClientSystemRole:
     @pytest.fixture
     def mock_genai(self):
         with (
-            patch("src.common.llm.gemini.genai") as mock_genai_module,
-            patch("src.common.llm.gemini.config") as mock_config,
+            patch("medici.common.llm.gemini.genai") as mock_genai_module,
+            patch("medici.common.llm.gemini.config") as mock_config,
         ):
             mock_config.GEMINI_API_KEY = "test-api-key"
             mock_client = MagicMock()

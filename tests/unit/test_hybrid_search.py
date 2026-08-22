@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.common.services.hybrid_search import HybridSearch
-from src.common.services.qdrant import QdrantStorageService
-from src.common.services.sparse_index import SparseSearchIndex
-from src.ingestion.embedding import EmbeddingService
+from medici.common.services.hybrid_search import HybridSearch
+from medici.common.services.qdrant import QdrantStorageService
+from medici.common.services.sparse_index import SparseSearchIndex
+from medici.ingestion.embedding import EmbeddingService
 
 
 # Mock classes and fixtures
@@ -367,7 +367,7 @@ class TestQdrantStorageService:
     @pytest.fixture
     def qdrant_service(self, mock_qdrant_client):
         """Create a QdrantStorageService with mocked client"""
-        from src.common.services.qdrant import QdrantStorageService
+        from medici.common.services.qdrant import QdrantStorageService
 
         service = QdrantStorageService(
             url="http://localhost:6333",
@@ -449,7 +449,7 @@ class TestEmbeddingService:
     @pytest.fixture
     def mock_genai_client(self):
         """Mock the Google AI client"""
-        with patch("src.ingestion.embedding.genai.Client") as mock_client:
+        with patch("medici.ingestion.embedding.genai.Client") as mock_client:
             client_instance = Mock()
             mock_client.return_value = client_instance
             yield client_instance
@@ -457,8 +457,8 @@ class TestEmbeddingService:
     @pytest.fixture
     def embedding_service(self, mock_genai_client):
         """Create EmbeddingService with mocked client"""
-        with patch("src.ingestion.embedding.config"):
-            from src.ingestion.embedding import EmbeddingService
+        with patch("medici.ingestion.embedding.config"):
+            from medici.ingestion.embedding import EmbeddingService
 
             service = EmbeddingService(model_name="test-model", dimensions=1536)
             return service
@@ -512,7 +512,7 @@ class TestSparseSearchIndex:
     @pytest.fixture
     def sparse_index(self):
         """Create a SparseSearchIndex instance"""
-        from src.common.services.sparse_index import SparseSearchIndex
+        from medici.common.services.sparse_index import SparseSearchIndex
 
         return SparseSearchIndex()
 

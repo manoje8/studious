@@ -12,11 +12,11 @@ and the chunker never sees real-shaped input.
 
 import pytest
 
-from src.common.utils.constants import ChunkerStrategy
-from src.common.utils.helper import separate_content
-from src.ingestion.chunking.chunk import Chunk
-from src.ingestion.chunking.chunker_factory import create_chunker
-from src.ingestion.chunking.chunking_config import ChunkingConfig
+from medici.common.utils.constants import ChunkerStrategy
+from medici.common.utils.helper import separate_content
+from medici.ingestion.chunking.chunk import Chunk
+from medici.ingestion.chunking.chunker_factory import create_chunker
+from medici.ingestion.chunking.chunking_config import ChunkingConfig
 
 
 @pytest.fixture

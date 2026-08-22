@@ -34,8 +34,8 @@ from pathlib import Path
 
 import logfire
 
-from src.common.utils.config import config
-from src.common.utils.helper import has_internet
+from medici.common.utils.config import config
+from medici.common.utils.helper import has_internet
 
 _EVAL_DIR = Path(__file__).resolve().parent
 _GOLDEN_SET_PATH = _EVAL_DIR / "golden_set.json"
@@ -51,23 +51,23 @@ async def _build_pipeline():
     from psycopg.rows import dict_row
     from psycopg_pool import AsyncConnectionPool
 
-    from src.agents.agentic.grader import GraderAgent
-    from src.agents.agentic.planner import PlannerAgent
-    from src.agents.agentic.query_expander import QueryExpander
-    from src.agents.agentic.query_rewriter import QueryRewriter
-    from src.agents.agentic.router import RouterAgent
-    from src.agents.agentic.synthesizer import SynthesizerAgent
-    from src.agents.graph.graph import compile_graph_with_postgres
-    from src.agents.graph.runner import GraphPipeline
-    from src.agents.memory.short_term import ShortTermMemoryManager
-    from src.agents.retrieval import RetrievalAgent
-    from src.common.cache.embedding_cache import EmbeddingCache
-    from src.common.llm.gemini import GeminiClient
-    from src.common.llm.groq import GroqClient
-    from src.common.services.hybrid_search import HybridSearch
-    from src.common.services.qdrant import QdrantStorageService
-    from src.common.services.reranker import Reranker
-    from src.ingestion.embedding import EmbeddingService
+    from medici.agents.agentic.grader import GraderAgent
+    from medici.agents.agentic.planner import PlannerAgent
+    from medici.agents.agentic.query_expander import QueryExpander
+    from medici.agents.agentic.query_rewriter import QueryRewriter
+    from medici.agents.agentic.router import RouterAgent
+    from medici.agents.agentic.synthesizer import SynthesizerAgent
+    from medici.agents.graph.graph import compile_graph_with_postgres
+    from medici.agents.graph.runner import GraphPipeline
+    from medici.agents.memory.short_term import ShortTermMemoryManager
+    from medici.agents.retrieval import RetrievalAgent
+    from medici.common.cache.embedding_cache import EmbeddingCache
+    from medici.common.llm.gemini import GeminiClient
+    from medici.common.llm.groq import GroqClient
+    from medici.common.services.hybrid_search import HybridSearch
+    from medici.common.services.qdrant import QdrantStorageService
+    from medici.common.services.reranker import Reranker
+    from medici.ingestion.embedding import EmbeddingService
 
     pool = AsyncConnectionPool(
         conninfo=config.POSTGRES_CONN_STRING,

@@ -1,0 +1,3 @@
+include LICENSE
+include README.md
+recursive-include medici *.yaml *.yml *.json *.sql *.typed

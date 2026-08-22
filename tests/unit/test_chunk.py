@@ -12,14 +12,14 @@ Covers:
 
 import pytest
 
-from src.common.utils.constants import ChunkerStrategy
-from src.common.utils.tokenizer import TikTokenTokenizer, Tokenizer
-from src.ingestion.chunking.chunk import Chunk, Chunking, build_parent_child_chunk
-from src.ingestion.chunking.chunker_factory import create_chunker
-from src.ingestion.chunking.chunking_config import ChunkingConfig
-from src.ingestion.chunking.fixed_window import FixedWindow
-from src.ingestion.chunking.recursive_character import RecursiveCharacterChunker
-from src.ingestion.chunking.sentence_boundary import SentenceBoundaryChunker
+from medici.common.utils.constants import ChunkerStrategy
+from medici.common.utils.tokenizer import TikTokenTokenizer, Tokenizer
+from medici.ingestion.chunking.chunk import Chunk, Chunking, build_parent_child_chunk
+from medici.ingestion.chunking.chunker_factory import create_chunker
+from medici.ingestion.chunking.chunking_config import ChunkingConfig
+from medici.ingestion.chunking.fixed_window import FixedWindow
+from medici.ingestion.chunking.recursive_character import RecursiveCharacterChunker
+from medici.ingestion.chunking.sentence_boundary import SentenceBoundaryChunker
 
 
 @pytest.fixture

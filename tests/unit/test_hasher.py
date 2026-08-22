@@ -9,7 +9,7 @@ Covers:
 
 import hashlib
 
-from src.common.utils.hasher import hash_data, make_yaml_serializable, sha256_hasher
+from medici.common.utils.hasher import hash_data, make_yaml_serializable, sha256_hasher
 
 # ---------------------------------------------------------------------------
 # sha256_hasher

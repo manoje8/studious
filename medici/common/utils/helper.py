@@ -1,0 +1,122 @@
+import asyncio
+import os.path
+import socket
+import sys
+from typing import Any
+
+import logfire
+from ascii_colors import ASCIIColors
+
+from medici.common.services.qdrant import QdrantStorageService
+from medici.common.services.sparse_index import SparseSearchIndex
+from medici.common.utils.constants import HTML_FORMATS, OFFICE_FORMATS, TEXT_FORMATS
+
+
+def check_env():
+    env_path = ".env"
+
+    if not os.path.exists(env_path):
+        warning_msg = (
+            "Warning: Startup directory must contain .env file for multi-instance support."
+        )
+        ASCIIColors.yellow(warning_msg)
+
+        if sys.stdin.isatty():
+            response = input("Do you want to continue? (yes/NO): ")
+            if response.lower() != "yes":
+                ASCIIColors.red("Server startup cancelled")
+                return False
+        return True
+    return True
+
+
+async def bootstrap_sparse_index(
+    storage_service: QdrantStorageService, sparse_index: SparseSearchIndex
+):
+    current_count = await storage_service.chunk_count()
+
+    if sparse_index.load():
+        if len(sparse_index.chunks) == current_count:
+            logfire.info(f"Loaded cache BM2 index ({current_count} chunks), skipped rebuild")
+            return
+        logfire.info(
+            f"Cache index stale ({len(sparse_index.chunks)} vs {current_count} chunks), rebuilding"
+        )
+
+    logfire.info("Rebuilding sparse index from Qdrant...")
+    all_chunks = await storage_service.scroll_all_chunks()
+
+    if not all_chunks:
+        logfire.warning("No chunks available to build sparse index")
+        return
+
+    logfire.info(f"Building BM25 index with {len(all_chunks)} chunks...")
+    await asyncio.to_thread(sparse_index.build, all_chunks)
+    await asyncio.to_thread(sparse_index.save)
+    logfire.info("BM25 index cached to disk")
+
+
+def separate_content(
+    content_list: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]], list[tuple[str, int]]]:
+    """
+    Separate the content after parsing.
+
+    Returns
+    -------
+    text_content:
+        All text blocks joined with double newlines (unchanged from before).
+    multimodal_items:
+        Non-text items, each annotated with ``_content_list_index`` holding
+        their original position in *content_list*.
+    text_blocks:
+        List of ``(text, original_index)`` pairs for every non-empty text
+        block, in document order.  Used by the processor to assign accurate
+        document-order positions to text chunks so that
+        ``build_parent_child_chunk`` windows across text *and* multimodal
+        chunks in true document order.
+    """
+    text_blocks: list[tuple[str, int]] = []
+    multimodal_items: list[dict[str, Any]] = []
+
+    for index, item in enumerate(content_list):
+        content_type = item.get("type", "text")
+
+        if content_type == "text":
+            text = item.get("text", "")
+            if text.strip():
+                text_blocks.append((text, index))
+        else:
+            # Multimodal content (image, table, equation, etc.)
+            multimodal_item = dict(item)
+            multimodal_item.setdefault("_content_list_index", index)
+            multimodal_items.append(multimodal_item)
+
+    text_content = "\n\n".join(text for text, _ in text_blocks)
+
+    logfire.info("Content separation complete:")
+    logfire.info(f"  - Text content length: {len(text_content)} characters")
+    logfire.info(f"  - Multimodal items count: {len(multimodal_items)}")
+
+    modal_types: dict[str, int] = {}
+    for item in multimodal_items:
+        modal_type = item.get("type", "unknown")
+        modal_types[modal_type] = modal_types.get(modal_type, 0) + 1
+
+    if modal_types:
+        logfire.info(f"  - Multimodal type distribution: {modal_types}")
+
+    return text_content, multimodal_items, text_blocks
+
+
+def has_internet(host="8.8.8.8", port=53, timeout=2) -> bool:
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except OSError:
+        return False
+
+
+def supported_extensions_list() -> set[Any]:
+    return set(list(HTML_FORMATS | OFFICE_FORMATS | TEXT_FORMATS | {".pdf"}))

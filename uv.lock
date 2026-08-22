@@ -2751,33 +2751,18 @@ wheels = [
 
 [[package]]
 name = "medici"
-version = "0.0.2"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ascii-colors" },
     { name = "asyncpg" },
     { name = "bcrypt" },
     { name = "beautifulsoup4" },
-    { name = "cerebras-cloud-sdk" },
-    { name = "cloud-sql-python-connector" },
-    { name = "docling" },
-    { name = "fastapi" },
     { name = "flashrank" },
-    { name = "google-cloud-aiplatform" },
-    { name = "google-cloud-discoveryengine" },
-    { name = "google-cloud-documentai" },
-    { name = "google-cloud-storage" },
     { name = "google-genai" },
     { name = "langchain" },
-    { name = "langchain-community" },
-    { name = "langchain-google-vertexai" },
-    { name = "langchain-groq" },
-    { name = "langchain-openai" },
     { name = "langchain-text-splitters" },
     { name = "langgraph" },
-    { name = "langgraph-checkpoint-postgres" },
-    { name = "langsmith" },
-    { name = "logfire", extra = ["fastapi", "requests"] },
     { name = "loguru" },
     { name = "nest-asyncio" },
     { name = "nltk" },
@@ -2788,10 +2773,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyjwt" },
     { name = "pypdf" },
-    { name = "python-docx" },
     { name = "python-dotenv" },
-    { name = "python-multipart" },
-    { name = "python-pptx" },
     { name = "pytz" },
     { name = "pyyaml" },
     { name = "qdrant-client", extra = ["fastembed"] },
@@ -2801,25 +2783,85 @@ dependencies = [
     { name = "requests" },
     { name = "sentence-transformers" },
     { name = "sqlalchemy" },
-    { name = "streamlit" },
     { name = "tenacity" },
     { name = "torch" },
-    { name = "trafilatura" },
     { name = "transformers" },
     { name = "treant" },
-    { name = "unstructured" },
-    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "cerebras-cloud-sdk" },
+    { name = "cloud-sql-python-connector" },
+    { name = "docling" },
+    { name = "fastapi" },
+    { name = "google-cloud-aiplatform" },
+    { name = "google-cloud-discoveryengine" },
+    { name = "google-cloud-documentai" },
+    { name = "google-cloud-storage" },
+    { name = "langchain-community" },
+    { name = "langchain-google-vertexai" },
+    { name = "langchain-groq" },
+    { name = "langchain-openai" },
+    { name = "langgraph-checkpoint-postgres" },
+    { name = "langsmith" },
+    { name = "logfire", extra = ["fastapi", "requests"] },
+    { name = "python-docx" },
+    { name = "python-multipart" },
+    { name = "python-pptx" },
+    { name = "streamlit" },
+    { name = "trafilatura" },
+    { name = "unstructured" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+api = [
+    { name = "fastapi" },
+    { name = "python-multipart" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+cerebras = [
+    { name = "cerebras-cloud-sdk" },
+]
 dev = [
     { name = "black" },
     { name = "pre-commit" },
     { name = "ruff" },
 ]
+docling = [
+    { name = "docling" },
+]
+documents = [
+    { name = "python-docx" },
+    { name = "python-pptx" },
+    { name = "trafilatura" },
+    { name = "unstructured" },
+]
+gcp = [
+    { name = "cloud-sql-python-connector" },
+    { name = "google-cloud-aiplatform" },
+    { name = "google-cloud-discoveryengine" },
+    { name = "google-cloud-documentai" },
+    { name = "google-cloud-storage" },
+    { name = "langchain-google-vertexai" },
+]
+graph = [
+    { name = "langchain-community" },
+    { name = "langchain-openai" },
+    { name = "langgraph-checkpoint-postgres" },
+]
+groq = [
+    { name = "langchain-groq" },
+]
+observability = [
+    { name = "langsmith" },
+    { name = "logfire", extra = ["fastapi", "requests"] },
+]
 test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
+]
+ui = [
+    { name = "streamlit" },
 ]
 
 [package.metadata]
@@ -2829,27 +2871,28 @@ requires-dist = [
     { name = "bcrypt" },
     { name = "beautifulsoup4" },
     { name = "black", marker = "extra == 'dev'" },
-    { name = "cerebras-cloud-sdk" },
-    { name = "cloud-sql-python-connector" },
-    { name = "docling" },
-    { name = "fastapi" },
+    { name = "cerebras-cloud-sdk", marker = "extra == 'cerebras'" },
+    { name = "cloud-sql-python-connector", marker = "extra == 'gcp'" },
+    { name = "docling", marker = "extra == 'docling'" },
+    { name = "fastapi", marker = "extra == 'api'" },
     { name = "flashrank" },
-    { name = "google-cloud-aiplatform" },
-    { name = "google-cloud-discoveryengine" },
-    { name = "google-cloud-documentai" },
-    { name = "google-cloud-storage" },
+    { name = "google-cloud-aiplatform", marker = "extra == 'gcp'" },
+    { name = "google-cloud-discoveryengine", marker = "extra == 'gcp'" },
+    { name = "google-cloud-documentai", marker = "extra == 'gcp'" },
+    { name = "google-cloud-storage", marker = "extra == 'gcp'" },
     { name = "google-genai" },
     { name = "langchain" },
-    { name = "langchain-community" },
-    { name = "langchain-google-vertexai" },
-    { name = "langchain-groq" },
-    { name = "langchain-openai" },
+    { name = "langchain-community", marker = "extra == 'graph'" },
+    { name = "langchain-google-vertexai", marker = "extra == 'gcp'" },
+    { name = "langchain-groq", marker = "extra == 'groq'" },
+    { name = "langchain-openai", marker = "extra == 'graph'" },
     { name = "langchain-text-splitters" },
     { name = "langgraph" },
-    { name = "langgraph-checkpoint-postgres" },
-    { name = "langsmith" },
-    { name = "logfire", extras = ["fastapi", "requests"] },
+    { name = "langgraph-checkpoint-postgres", marker = "extra == 'graph'" },
+    { name = "langsmith", marker = "extra == 'observability'" },
+    { name = "logfire", extras = ["fastapi", "requests"], marker = "extra == 'observability'" },
     { name = "loguru" },
+    { name = "medici", extras = ["api", "ui", "gcp", "groq", "cerebras", "docling", "documents", "graph", "observability"], marker = "extra == 'all'" },
     { name = "nest-asyncio" },
     { name = "nltk" },
     { name = "openai" },
@@ -2862,10 +2905,10 @@ requires-dist = [
     { name = "pypdf" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-asyncio", marker = "extra == 'test'" },
-    { name = "python-docx" },
+    { name = "python-docx", marker = "extra == 'documents'" },
     { name = "python-dotenv" },
-    { name = "python-multipart" },
-    { name = "python-pptx" },
+    { name = "python-multipart", marker = "extra == 'api'" },
+    { name = "python-pptx", marker = "extra == 'documents'" },
     { name = "pytz" },
     { name = "pyyaml" },
     { name = "qdrant-client", extras = ["fastembed"] },
@@ -2876,16 +2919,16 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sentence-transformers" },
     { name = "sqlalchemy" },
-    { name = "streamlit" },
+    { name = "streamlit", marker = "extra == 'ui'" },
     { name = "tenacity" },
     { name = "torch" },
-    { name = "trafilatura" },
+    { name = "trafilatura", marker = "extra == 'documents'" },
     { name = "transformers" },
     { name = "treant", git = "https://github.com/manoje8/treant.git" },
-    { name = "unstructured" },
-    { name = "uvicorn", extras = ["standard"] },
+    { name = "unstructured", marker = "extra == 'documents'" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'" },
 ]
-provides-extras = ["dev", "test"]
+provides-extras = ["api", "ui", "gcp", "groq", "cerebras", "docling", "documents", "graph", "observability", "dev", "test", "all"]
 
 [[package]]
 name = "ml-dtypes"

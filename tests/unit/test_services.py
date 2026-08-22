@@ -14,9 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.common.services.qdrant import QdrantStorageService
-from src.common.services.reranker import Reranker
-from src.common.services.sparse_index import SparseSearchIndex
+from medici.common.services.qdrant import QdrantStorageService
+from medici.common.services.reranker import Reranker
+from medici.common.services.sparse_index import SparseSearchIndex
 
 # SparseSearchIndex
 
@@ -143,7 +143,7 @@ class TestReranker:
     @pytest.fixture
     def mock_ranker(self):
         """Mock flashrank Ranker."""
-        with patch("src.common.services.reranker.Ranker") as mock_ranker_cls:
+        with patch("medici.common.services.reranker.Ranker") as mock_ranker_cls:
             ranker_instance = MagicMock()
             mock_ranker_cls.return_value = ranker_instance
             yield ranker_instance
@@ -237,9 +237,9 @@ class TestQdrantStorageService:
     @pytest.fixture
     def mock_client(self):
         with (
-            patch("src.common.services.qdrant.AsyncQdrantClient") as mock_cls,
-            patch("src.common.services.qdrant.config") as mock_config,
-            patch("src.common.services.qdrant.logfire"),
+            patch("medici.common.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("medici.common.services.qdrant.config") as mock_config,
+            patch("medici.common.services.qdrant.logfire"),
         ):
             mock_config.QDRANT_COLLECTION_NAME = "test_collection"
             mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
@@ -531,9 +531,9 @@ class TestQdrantRetry:
     @pytest.fixture
     def mock_client(self):
         with (
-            patch("src.common.services.qdrant.AsyncQdrantClient") as mock_cls,
-            patch("src.common.services.qdrant.config") as mock_config,
-            patch("src.common.services.qdrant.logfire"),
+            patch("medici.common.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("medici.common.services.qdrant.config") as mock_config,
+            patch("medici.common.services.qdrant.logfire"),
         ):
             mock_config.QDRANT_COLLECTION_NAME = "test_collection"
             mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
@@ -669,9 +669,9 @@ class TestQdrantPing:
     @pytest.fixture
     def mock_client(self):
         with (
-            patch("src.common.services.qdrant.AsyncQdrantClient") as mock_cls,
-            patch("src.common.services.qdrant.config") as mock_config,
-            patch("src.common.services.qdrant.logfire"),
+            patch("medici.common.services.qdrant.AsyncQdrantClient") as mock_cls,
+            patch("medici.common.services.qdrant.config") as mock_config,
+            patch("medici.common.services.qdrant.logfire"),
         ):
             mock_config.QDRANT_COLLECTION_NAME = "test_collection"
             mock_config.QDRANT_CLUSTER_ENDPOINT = "http://localhost:6333"
@@ -797,10 +797,10 @@ class TestTokenBudgetGuard:
             "section": "Test",
         }
 
-    @patch("src.agents.agentic.synthesizer.get_tokenizer")
+    @patch("medici.agents.agentic.synthesizer.get_tokenizer")
     def test_build_context_sorts_by_relevance_score(self, mock_get_tok):
         """Highest-score chunk must appear first in the built context string."""
-        from src.agents.agentic.synthesizer import _build_context
+        from medici.agents.agentic.synthesizer import _build_context
 
         # Tokenizer that never trips the budget (returns tiny counts)
         tok = MagicMock()
@@ -817,10 +817,10 @@ class TestTokenBudgetGuard:
         # high-score chunk must precede low-score chunk in output
         assert ctx.index("high relevance text") < ctx.index("low relevance text")
 
-    @patch("src.agents.agentic.synthesizer.get_tokenizer")
+    @patch("medici.agents.agentic.synthesizer.get_tokenizer")
     def test_build_context_trims_low_relevance_when_over_budget(self, mock_get_tok):
         """Low-score chunk is dropped when the token budget is exhausted."""
-        from src.agents.agentic.synthesizer import _build_context
+        from medici.agents.agentic.synthesizer import _build_context
 
         tok = MagicMock()
         # Each chunk part costs 60 tokens; separator costs 5 — budget=70 fits only 1 chunk.
@@ -831,7 +831,7 @@ class TestTokenBudgetGuard:
         high = self._make_chunk("high relevance content", score=0.9)
         low = self._make_chunk("low relevance content", score=0.1)
 
-        from src.agents.agentic.synthesizer import config
+        from medici.agents.agentic.synthesizer import config
 
         with (
             patch.object(config, "MAX_CONTEXT_CHARS", 1_000_000),
@@ -845,10 +845,10 @@ class TestTokenBudgetGuard:
         assert "high relevance content" in ctx
         assert "low relevance content" not in ctx
 
-    @patch("src.agents.agentic.synthesizer.get_tokenizer")
+    @patch("medici.agents.agentic.synthesizer.get_tokenizer")
     def test_build_context_empty_chunks_returns_empty_string(self, mock_get_tok):
         """Empty accepted_chunks must produce an empty string."""
-        from src.agents.agentic.synthesizer import _build_context
+        from medici.agents.agentic.synthesizer import _build_context
 
         tok = MagicMock()
         tok.count.return_value = 0
@@ -857,10 +857,10 @@ class TestTokenBudgetGuard:
         state = {"accepted_chunks": []}
         assert _build_context(state) == ""
 
-    @patch("src.agents.agentic.synthesizer.get_tokenizer")
+    @patch("medici.agents.agentic.synthesizer.get_tokenizer")
     def test_build_context_all_chunks_fit_returns_all(self, mock_get_tok):
         """When total tokens < budget, all chunks must be included."""
-        from src.agents.agentic.synthesizer import _build_context
+        from medici.agents.agentic.synthesizer import _build_context
 
         tok = MagicMock()
         tok.count.return_value = 1  # tiny token counts — nothing will overflow
@@ -872,7 +872,7 @@ class TestTokenBudgetGuard:
             self._make_chunk("gamma content", score=0.4),
         ]
 
-        from src.agents.agentic.synthesizer import config
+        from medici.agents.agentic.synthesizer import config
 
         with (
             patch.object(config, "MAX_CONTEXT_CHARS", 1_000_000),
@@ -895,10 +895,10 @@ class TestQueryInputGuard:
     """Verify that long queries are truncated to MAX_QUERY_INPUT_TOKENS before the LLM sees them."""
 
     @pytest.mark.asyncio
-    @patch("src.common.utils.query_utils.get_tokenizer")
+    @patch("medici.common.utils.query_utils.get_tokenizer")
     async def test_expander_truncates_long_query(self, mock_get_tok):
         """A query > 512 tokens is truncated; the LLM prompt receives the shorter text."""
-        from src.agents.agentic.query_expander import QueryExpander
+        from medici.agents.agentic.query_expander import QueryExpander
 
         tok = MagicMock()
         tok.encode.return_value = list(range(600))  # 600 tokens — over limit
@@ -910,7 +910,7 @@ class TestQueryInputGuard:
 
         expander = QueryExpander(llm_client=mock_llm)
 
-        with patch("src.common.utils.config") as mock_cfg:
+        with patch("medici.common.utils.config") as mock_cfg:
             mock_cfg.MAX_QUERY_INPUT_TOKENS = 512
 
             await expander.expand("x" * 3000)
@@ -923,10 +923,10 @@ class TestQueryInputGuard:
         assert "truncated query text" in call_prompt
 
     @pytest.mark.asyncio
-    @patch("src.common.utils.query_utils.get_tokenizer")
+    @patch("medici.common.utils.query_utils.get_tokenizer")
     async def test_expander_passes_short_query_unchanged(self, mock_get_tok):
         """A short query (≤ 512 tokens) is forwarded verbatim."""
-        from src.agents.agentic.query_expander import QueryExpander
+        from medici.agents.agentic.query_expander import QueryExpander
 
         tok = MagicMock()
         tok.encode.return_value = list(range(10))  # 10 tokens — under limit
@@ -939,7 +939,7 @@ class TestQueryInputGuard:
         expander = QueryExpander(llm_client=mock_llm)
         original_query = "What is the capital of France?"
 
-        with patch("src.common.utils.config") as mock_cfg:
+        with patch("medici.common.utils.config") as mock_cfg:
             mock_cfg.MAX_QUERY_INPUT_TOKENS = 512
 
             await expander.expand(original_query)
@@ -951,10 +951,10 @@ class TestQueryInputGuard:
         assert original_query in call_prompt
 
     @pytest.mark.asyncio
-    @patch("src.common.utils.query_utils.get_tokenizer")
+    @patch("medici.common.utils.query_utils.get_tokenizer")
     async def test_rewriter_truncates_long_query(self, mock_get_tok):
         """A query > 512 tokens is truncated before rewrite() processes it."""
-        from src.agents.agentic.query_rewriter import QueryRewriter
+        from medici.agents.agentic.query_rewriter import QueryRewriter
 
         tok = MagicMock()
         tok.encode.return_value = list(range(700))  # 700 tokens — over limit
@@ -977,7 +977,7 @@ class TestQueryInputGuard:
         session.turns = ["turn1"]
         session.to_prompt_format.return_value = "history text"
 
-        with patch("src.common.utils.config") as mock_cfg:
+        with patch("medici.common.utils.config") as mock_cfg:
             mock_cfg.MAX_QUERY_INPUT_TOKENS = 512
 
             await rewriter.rewrite("x" * 3500, session)
@@ -988,10 +988,10 @@ class TestQueryInputGuard:
         assert "truncated rewriter query" in call_prompt
 
     @pytest.mark.asyncio
-    @patch("src.common.utils.query_utils.get_tokenizer")
+    @patch("medici.common.utils.query_utils.get_tokenizer")
     async def test_rewriter_passes_short_query_unchanged(self, mock_get_tok):
         """A short query (≤ 512 tokens) is forwarded verbatim."""
-        from src.agents.agentic.query_rewriter import QueryRewriter
+        from medici.agents.agentic.query_rewriter import QueryRewriter
 
         tok = MagicMock()
         tok.encode.return_value = list(range(20))
@@ -1004,7 +1004,7 @@ class TestQueryInputGuard:
 
         original_query = "Who signed the contract?"
 
-        with patch("src.common.utils.config") as mock_cfg:
+        with patch("medici.common.utils.config") as mock_cfg:
             mock_cfg.MAX_QUERY_INPUT_TOKENS = 512
 
             result = await rewriter.rewrite(original_query, session)
