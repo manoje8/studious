@@ -22,7 +22,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# --- Core dependencies (minimal for library use) ---
 dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv",
@@ -74,15 +73,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# FastAPI server
+
 api = [
     "fastapi",
     "uvicorn[standard]",
     "python-multipart",
 ]
-# Streamlit UI
+
 ui = ["streamlit"]
-# Google Cloud integrations (Document AI, Vertex AI, GCS)
+
 gcp = [
     "google-cloud-storage",
     "google-cloud-aiplatform",
@@ -91,27 +90,27 @@ gcp = [
     "cloud-sql-python-connector",
     "langchain-google-vertexai",
 ]
-# Additional LLM providers
+
 groq = ["langchain-groq"]
 cerebras = ["cerebras-cloud-sdk"]
-# Document parsing extras
+
 docling = ["docling"]
 documents = ["python-pptx", "python-docx", "unstructured", "trafilatura"]
-# Knowledge graph (PostgreSQL checkpoint)
+
 graph = [
     "langgraph-checkpoint-postgres",
     "langchain-community",
     "langchain-openai",
 ]
-# Observability
+
 observability = [
     "langsmith",
     "logfire[fastapi,requests]",
 ]
-# Development
+
 dev = ["ruff", "black", "pre-commit"]
 test = ["pytest", "pytest-asyncio"]
-# Everything
+
 all = [
     "medici[api,ui,gcp,groq,cerebras,docling,documents,graph,observability]",
 ]
@@ -171,7 +170,7 @@ ignore_no_config = true
 
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
 include = ["medici*"]
 
 

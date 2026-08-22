@@ -18,7 +18,7 @@ COPY requirements.txt pyproject.toml README.md ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-COPY src ./src
+COPY medici ./medici
 RUN pip install --no-cache-dir -e . --no-deps
 
 RUN useradd --create-home --uid 1000 appuser

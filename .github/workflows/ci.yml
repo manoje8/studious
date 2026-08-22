@@ -103,7 +103,7 @@ jobs:
           pytest tests/unit/ \
             -v \
             --tb=short \
-            --cov=src \
+            --cov=medici \
             --cov-report=xml \
             --cov-report=term-missing \
 #            --cov-fail-under=80

@@ -2,11 +2,11 @@
 
 from medici.common.utils.config import Config, config
 from medici.common.utils.constants import (
-    StorageType,
-    ChunkingType,
-    ParseMethod,
-    ChunkType,
     ChunkerStrategy,
+    ChunkingType,
+    ChunkType,
+    ParseMethod,
+    StorageType,
 )
 
 __all__ = [

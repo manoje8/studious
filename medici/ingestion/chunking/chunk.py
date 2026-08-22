@@ -1,46 +1,9 @@
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
+from medici.common.models import Chunk
 from medici.common.utils.tokenizer import Tokenizer
-
-
-@dataclass
-class Chunk:
-    text: str
-    chunk_index: int
-    doc_id: str
-    source_file: str
-    chunk_type: str
-    section_title: str = ""
-    page_numbers: list[int] = field(default_factory=list)
-    block_types: list[str] = field(default_factory=list)
-    token_count: int = 0
-    parent_text: str = ""
-    parent_token_count: int = 0
-    parent_window_start: int = 0
-    parent_window_end: int = 0
-    metadata: dict = field(default_factory=dict)
-    image_path: str = ""
-
-    def to_quant_payload(self) -> dict:
-        payload = {
-            "text": self.text,
-            "chunk_index": self.chunk_index,
-            "doc_id": self.doc_id,
-            "source_file": self.source_file,
-            "chunk_type": self.chunk_type,
-            "content_type": self.chunk_type,
-            "section_title": self.section_title,
-            "page_numbers": self.page_numbers,
-            "token_count": self.token_count,
-            "parent_text": self.parent_text,
-            "parent_token_count": self.parent_token_count,
-            "metadata": self.metadata,
-        }
-        if self.image_path:
-            payload["image_path"] = self.image_path
-        return payload
 
 
 @dataclass

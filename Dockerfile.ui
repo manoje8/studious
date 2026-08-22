@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip \
         python-dotenv \
         logfire
 
-COPY src ./src
+COPY medici ./medici
 COPY web_ui ./web_ui
 
 RUN pip install --no-cache-dir -e . --no-deps

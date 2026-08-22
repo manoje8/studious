@@ -122,7 +122,7 @@ async def lifespan(app: FastAPI):
                 threshold=config.FAITHFULNESS_THRESHOLD,
             )
         else:
-            logfire.info("FaithfulnessChecker disabled (FAITHFULNESS_ENABLED=false)")
+            logfire.info("FaithfulnessChecker disabled")
 
         kg_retriever = None
         kg_extractor = None
@@ -265,6 +265,9 @@ def create_apps():
     async def health(request: Request):
         qdrant_ok = False
         qdrant_service: QdrantStorageService | None = getattr(request.app.state, "qdrant", None)
+
+        print("=====> ", await qdrant_service.ping())
+
         if qdrant_service is not None:
             qdrant_ok = await qdrant_service.ping()
 
