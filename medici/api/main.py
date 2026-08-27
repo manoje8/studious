@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import selectors
 import sys
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -266,8 +267,6 @@ def create_apps():
         qdrant_ok = False
         qdrant_service: QdrantStorageService | None = getattr(request.app.state, "qdrant", None)
 
-        print("=====> ", await qdrant_service.ping())
-
         if qdrant_service is not None:
             qdrant_ok = await qdrant_service.ping()
 
@@ -351,6 +350,10 @@ def create_apps():
 
 
 def main():
+
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     logfire.configure(service_name=config.PROJECT_NAME, send_to_logfire=has_internet())
 
     if not check_env():
@@ -361,7 +364,23 @@ def main():
     freeze_support()
 
     app = create_apps()
-    unicorn_config = {"app": app, "host": config.HOST, "port": config.PORT}
+
+    if sys.platform == "win32":
+        unicorn_config = {
+            "app": app,
+            "host": config.HOST,
+            "port": config.PORT,
+            "loop": lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()),
+            "workers": 1,
+        }
+    else:
+        unicorn_config = {
+            "app": app,
+            "host": config.HOST,
+            "port": config.PORT,
+            "workers": config.WORKERS,
+        }
+
     uvicorn.run(**unicorn_config)
 
 

@@ -11,6 +11,7 @@ class Config:
     PORT: int = int(os.getenv("PORT", 8000))
     HOST: str = os.getenv("HOST", "localhost")
     CORS_ORIGINS = os.getenv("CORS_ORIGINS")
+    WORKERS = int(os.getenv("WORKERS", 1))
 
     PROJECT_ID: str = os.getenv("PROJECT_ID")
     LOCATION: str = os.getenv("LOCATION")
