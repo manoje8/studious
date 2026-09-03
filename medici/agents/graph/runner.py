@@ -4,6 +4,7 @@ import uuid
 import logfire
 
 from medici.agents.memory.conversation_model import ConversationSession
+from medici.common.llm.fallback import STREAM_BREAK_SENTINEL, MidStreamFallbackError
 from medici.common.utils.config import config
 
 _UNCACHEABLE_CATEGORIES = frozenset({"chitchat", "meta", "conversational", "summarization"})
@@ -347,9 +348,29 @@ class GraphPipeline:
                 collected_tokens: list[str] = []
                 try:
                     async for token in _synthesizer_agent.stream_synthesize(final_state):
+                        # Filter out the stream-break sentinel so it never
+                        # ends up in the assembled answer text.
+                        if token == STREAM_BREAK_SENTINEL:
+                            continue
                         collected_tokens.append(token)
                         yield {"type": "token", "content": token}
                     answer = "".join(collected_tokens)
+                except MidStreamFallbackError as exc:
+                    logfire.error(f"Mid-stream LLM fallback aborted for stage synthesis: {exc}")
+                    # Emit a stream_break event so the frontend can show an
+                    # appropriate "response interrupted" notice to the user.
+                    yield {
+                        "type": "stream_break",
+                        "message": (
+                            "The response was interrupted because the language "
+                            "model failed mid-stream. Please retry your query."
+                        ),
+                        "tokens_before_break": len(collected_tokens),
+                    }
+                    # Use whatever partial tokens we collected, or fall back
+                    # to the graph's stored final_answer.
+                    partial = "".join(collected_tokens)
+                    answer = partial if partial else final_state.get("final_answer", "")
                 except Exception as exc:
                     logfire.warning(f"Streaming synthesis error: {exc}")
                     if not answer:

@@ -42,7 +42,7 @@ async def _event_generator(
             user_id=user_id,
         ):
             yield f"data: {json.dumps(event)}\n\n"
-            if event.get("type") in ("done", "error"):
+            if event.get("type") in ("done", "error", "stream_break"):
                 break
     except Exception as exc:
         logfire.error("SSE generator unhandled error", error=str(exc))

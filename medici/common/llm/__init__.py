@@ -2,7 +2,11 @@
 
 from medici.common.llm.base import BaseLLM, LLMResponse
 from medici.common.llm.cerebras import CerebrasAI
-from medici.common.llm.fallback import FallbackClient
+from medici.common.llm.fallback import (
+    STREAM_BREAK_SENTINEL,
+    FallbackClient,
+    MidStreamFallbackError,
+)
 from medici.common.llm.gemini import GeminiClient
 from medici.common.llm.groq import GroqClient
 from medici.common.llm.nvidia import NvidiaClient
@@ -15,4 +19,6 @@ __all__ = [
     "NvidiaClient",
     "CerebrasAI",
     "FallbackClient",
+    "MidStreamFallbackError",
+    "STREAM_BREAK_SENTINEL",
 ]
