@@ -647,6 +647,7 @@ Respond helpfully and offer to assist with document-based questions.
             prompt,
             max_tokens=config.SYNTHESIS_MAX_TOKENS_META,
             stage_tag="stream_synthesize_meta",
+            system_prompt=_FIREWALL_PREAMBLE,
         ):
             yield token
 
@@ -804,6 +805,7 @@ Provide:
                     history_prompt,
                     max_tokens=config.SYNTHESIS_MAX_TOKENS_SUMMARIZATION,
                     stage_tag="stream_summarize_conversation",
+                    system_prompt=_FIREWALL_PREAMBLE,
                 ):
                     yield token
                 return

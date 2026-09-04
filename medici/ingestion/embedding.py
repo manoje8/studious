@@ -5,10 +5,13 @@ from google import genai
 
 from medici.common.cache.embedding_cache import EmbeddingCache
 from medici.common.utils.config import config
+from medici.common.utils.tokenizer import TikTokenTokenizer
 from medici.ingestion.chunking.chunk import Chunk
 
 VERTEX_MAX_TEXTS_PER_REQUEST = 250
 VERTEX_MAX_TOKENS_PER_REQUEST = 20_000
+
+_tokenizer = TikTokenTokenizer()
 
 
 def _is_token_limit_error(error: Exception) -> bool:
@@ -19,8 +22,8 @@ def _is_token_limit_error(error: Exception) -> bool:
 
 
 def _estimate_tokens(text: str) -> int:
-    # TODO: Add Tiktoken to estimate token count
-    return max(1, len(text) // 4)
+    """Return the exact tiktoken token count for *text* (minimum 1)."""
+    return max(1, _tokenizer.count(text))
 
 
 from medici.common.models import EmbeddedChunk  # noqa: F401 — re-export for backward compatibility
