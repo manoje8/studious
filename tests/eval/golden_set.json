@@ -1,5 +1,7 @@
 {
-  "_comment": "Golden evaluation set for RAG pipeline. Each entry has: id, query, expected_facts (claims the answer MUST contain), expected_chunks (text substrings that should appear in accepted_chunks), category, difficulty. expected_chunk_ids are doc_id:chunk_index pairs — leave empty to rely on text-substring matching only.",
+  "_comment": "Golden evaluation set for RAG pipeline. Each entry has: id, query, expected_facts (claims the answer MUST contain), expected_chunks_text (substrings that should appear in accepted_chunks), category, difficulty. expected_chunk_ids are doc_id:chunk_index pairs — leave empty to rely on text-substring matching only.",
+  "version": "2.0",
+  "description": "Comprehensive evaluation set covering factual, analytical, procedural, and multi-hop query categories across the 'Attention Is All You Need' corpus.",
   "cases": [
     {
       "id": "attn-001",
@@ -14,7 +16,8 @@
         "This improved over existing best results including ensembles by over 2 BLEU"
       ],
       "category": "factual",
-      "difficulty": "easy"
+      "difficulty": "easy",
+      "tags": ["bleu", "performance"]
     },
     {
       "id": "attn-002",
@@ -27,7 +30,281 @@
         "The Transformer base model uses 8 parallel attention heads"
       ],
       "category": "factual",
-      "difficulty": "easy"
+      "difficulty": "easy",
+      "tags": ["architecture", "attention"]
+    },
+    {
+      "id": "attn-003",
+      "query": "What is the dimensionality of the model (dmodel) in the Transformer base model?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "dmodel = 512"
+      ],
+      "expected_facts": [
+        "The Transformer base model has dmodel = 512"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["architecture", "dimensions"]
+    },
+    {
+      "id": "attn-004",
+      "query": "What optimizer was used to train the Transformer?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "Adam optimizer"
+      ],
+      "expected_facts": [
+        "The Adam optimizer was used to train the Transformer"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["training"]
+    },
+    {
+      "id": "attn-005",
+      "query": "What types of regularization were used during Transformer training?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "dropout",
+        "label smoothing"
+      ],
+      "expected_facts": [
+        "Dropout was applied during Transformer training",
+        "Label smoothing was used as a regularization technique"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["training", "regularization"]
+    },
+    {
+      "id": "attn-006",
+      "query": "How does the Transformer's positional encoding work?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "sine and cosine functions"
+      ],
+      "expected_facts": [
+        "Positional encodings use sine and cosine functions of different frequencies",
+        "The positional encoding has the same dimension dmodel as the embeddings"
+      ],
+      "category": "analytical",
+      "difficulty": "medium",
+      "tags": ["architecture", "positional-encoding"]
+    },
+    {
+      "id": "attn-007",
+      "query": "What is Scaled Dot-Product Attention and how is it computed?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "Attention(Q, K, V)"
+      ],
+      "expected_facts": [
+        "Scaled Dot-Product Attention computes attention using queries, keys, and values",
+        "The dot products are scaled by 1/sqrt(dk)"
+      ],
+      "category": "analytical",
+      "difficulty": "medium",
+      "tags": ["attention", "mechanism"]
+    },
+    {
+      "id": "attn-008",
+      "query": "How long did it take to train the Transformer big model?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "3.5 days"
+      ],
+      "expected_facts": [
+        "The Transformer big model was trained for 3.5 days"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["training", "compute"]
+    },
+    {
+      "id": "attn-009",
+      "query": "What BLEU score did the Transformer achieve on the English-to-French translation task?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "41.0",
+        "English-to-French"
+      ],
+      "expected_facts": [
+        "The Transformer achieved 41.0 BLEU on WMT 2014 English-to-French"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["bleu", "performance"]
+    },
+    {
+      "id": "attn-010",
+      "query": "What is Multi-Head Attention and why is it used instead of single-head attention?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "multi-head attention",
+        "different representation subspaces"
+      ],
+      "expected_facts": [
+        "Multi-head attention allows the model to attend to information from different representation subspaces",
+        "It linearly projects queries, keys, and values h times with different learned projections"
+      ],
+      "category": "analytical",
+      "difficulty": "medium",
+      "tags": ["attention", "multi-head"]
+    },
+    {
+      "id": "attn-011",
+      "query": "How does the Transformer compare to recurrent models in terms of computational complexity?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "self-attention",
+        "complexity"
+      ],
+      "expected_facts": [
+        "Self-attention layers connect all positions with a constant number of sequential operations",
+        "A self-attention layer is faster than a recurrent layer when the sequence length is smaller than the representation dimensionality"
+      ],
+      "category": "comparative",
+      "difficulty": "medium",
+      "tags": ["complexity", "comparison"]
+    },
+    {
+      "id": "attn-012",
+      "query": "What is the encoder structure in the Transformer?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "stack of N = 6",
+        "sub-layers"
+      ],
+      "expected_facts": [
+        "The encoder is a stack of N = 6 identical layers",
+        "Each encoder layer has two sub-layers: multi-head self-attention and a feed-forward network"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["architecture", "encoder"]
+    },
+    {
+      "id": "attn-013",
+      "query": "What training data was used for the English-German translation task?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "4.5 million sentence pairs"
+      ],
+      "expected_facts": [
+        "The WMT 2014 English-German dataset consists of about 4.5 million sentence pairs"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["data", "training"]
+    },
+    {
+      "id": "attn-014",
+      "query": "What is the feed-forward network structure in the Transformer?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "two linear transformations",
+        "ReLU"
+      ],
+      "expected_facts": [
+        "The feed-forward network consists of two linear transformations with a ReLU activation in between",
+        "The inner layer has dimensionality dff = 2048"
+      ],
+      "category": "factual",
+      "difficulty": "medium",
+      "tags": ["architecture", "ffn"]
+    },
+    {
+      "id": "attn-015",
+      "query": "How did the Transformer perform on English constituency parsing?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "constituency parsing"
+      ],
+      "expected_facts": [
+        "The Transformer generalized well to English constituency parsing even with limited task-specific tuning"
+      ],
+      "category": "factual",
+      "difficulty": "hard",
+      "tags": ["generalization", "parsing"]
+    },
+    {
+      "id": "attn-016",
+      "query": "Why does dot-product attention use a scaling factor?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "scaling factor",
+        "softmax"
+      ],
+      "expected_facts": [
+        "Without scaling, for large values of dk the dot products grow large pushing the softmax into regions with extremely small gradients"
+      ],
+      "category": "analytical",
+      "difficulty": "medium",
+      "tags": ["attention", "scaling"]
+    },
+    {
+      "id": "attn-017",
+      "query": "What are the three ways multi-head attention is used in the Transformer?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "encoder-decoder attention",
+        "encoder self-attention",
+        "decoder self-attention"
+      ],
+      "expected_facts": [
+        "Multi-head attention is used in encoder-decoder attention layers",
+        "Multi-head attention is used in encoder self-attention layers",
+        "Multi-head attention is used in masked decoder self-attention layers"
+      ],
+      "category": "analytical",
+      "difficulty": "medium",
+      "tags": ["attention", "usage"]
+    },
+    {
+      "id": "attn-018",
+      "query": "Summarize the main contribution of the Attention Is All You Need paper",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "Transformer",
+        "attention"
+      ],
+      "expected_facts": [
+        "The Transformer is the first sequence transduction model based entirely on attention",
+        "It replaces the recurrent layers traditionally used in encoder-decoder architectures with multi-headed self-attention"
+      ],
+      "category": "summarization",
+      "difficulty": "medium",
+      "tags": ["contribution", "summary"]
+    },
+    {
+      "id": "attn-019",
+      "query": "What warmup schedule was used for the learning rate during Transformer training?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "warmup_steps"
+      ],
+      "expected_facts": [
+        "The learning rate increased linearly during the warmup period then decreased proportionally to the inverse square root of the step number"
+      ],
+      "category": "factual",
+      "difficulty": "medium",
+      "tags": ["training", "learning-rate"]
+    },
+    {
+      "id": "attn-020",
+      "query": "What dropout rate was used in the Transformer base model?",
+      "expected_chunk_ids": [],
+      "expected_chunks_text": [
+        "dropout",
+        "0.1"
+      ],
+      "expected_facts": [
+        "The Transformer base model uses a dropout rate of 0.1"
+      ],
+      "category": "factual",
+      "difficulty": "easy",
+      "tags": ["training", "dropout"]
     }
   ]
 }

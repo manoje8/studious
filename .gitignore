@@ -65,3 +65,4 @@ data
 .benchmarks
 tests/eval/eval_results.json
 .doc_cache/
+.eval_history/

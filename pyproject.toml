@@ -110,6 +110,7 @@ observability = [
 
 dev = ["ruff", "black", "pre-commit"]
 test = ["pytest", "pytest-asyncio"]
+eval = ["medici[test]"]
 
 all = [
     "medici[api,ui,gcp,groq,cerebras,docling,documents,graph,observability]",
@@ -122,6 +123,7 @@ Issues = "https://github.com/manoje8/medici/issues"
 
 [project.scripts]
 medici = "medici.ingestion.cli:main"
+medici-eval = "medici.eval.__main__:main"
 
 [tool.ruff]
 target-version = "py312"
