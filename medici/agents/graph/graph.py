@@ -16,7 +16,6 @@ from medici.agents.graph.nodes import (
     grade,
     handle_simple_response,
     hop_check,
-    kg_retrieve,
     plan,
     retrieve,
     rewrite_for_refinement,
@@ -36,7 +35,6 @@ def build_rag_graph(
     grader,
     synthesizer,
     faithfulness_checker=None,
-    kg_retriever=None,
 ):
     builder = StateGraph(State)
 
@@ -76,16 +74,14 @@ def build_rag_graph(
         },
     )
 
-    builder.add_node("kg_retrieve", partial(kg_retrieve, kg_retriever=kg_retriever))
-    builder.add_edge("plan", "kg_retrieve")
-    builder.add_edge("kg_retrieve", "retrieve")
+    builder.add_edge("plan", "retrieve")
     builder.add_edge("retrieve", "hop_check")
 
     builder.add_conditional_edges(
         "hop_check",
         route_after_hop_check,
         {
-            "retrieve": "kg_retrieve",
+            "retrieve": "retrieve",
             "grade": "grade",
             "synthesize": "synthesize",
         },
@@ -99,7 +95,7 @@ def build_rag_graph(
             "synthesize": "synthesize",
         },
     )
-    builder.add_edge("rewrite_for_refinement", "kg_retrieve")
+    builder.add_edge("rewrite_for_refinement", "retrieve")
 
     if faithfulness_checker is not None:
         builder.add_edge("synthesize", "faithfulness_check")

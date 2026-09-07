@@ -3,7 +3,6 @@ import logfire
 from medici.agents.adaptive_retrieval import AdaptiveRetrievalConfig
 from medici.agents.graph.state import State
 from medici.common.services.faithfulness_checker import FaithfulnessChecker
-from medici.knowledge_graph.retriever import KGRetriever
 
 _CHUNK_PREVIEW_MAX_CHARS = 300
 
@@ -69,61 +68,6 @@ async def plan(state: State, planner) -> dict:
         "hop_questions": sub_qs,
         "current_hop": 0,
         "retrieval_round": 0,
-    }
-
-
-async def kg_retrieve(state: State, kg_retriever: KGRetriever | None) -> dict:
-    """
-    Retrieve chunks via knowledge graph traversal.
-
-    Runs before the vector-based ``retrieve`` node.  Extracted entities and
-    their graph neighborhoods are resolved to source chunks, which are
-    pre-seeded into ``accepted_chunks`` so the vector retriever can focus
-    on filling remaining gaps.
-
-    When *kg_retriever* is ``None`` (KG disabled), the node is a transparent
-    pass-through that returns an empty KG state.
-    """
-    if kg_retriever is None:
-        return {
-            "kg_entities_found": [],
-            "kg_chunks": [],
-            "kg_traversal_paths": [],
-        }
-
-    query = state["current_query"]
-    doc_id_filter = state.get("doc_id_filter")
-
-    with logfire.span("kg_retrieve", query=query[:80]):
-        kg_result = await kg_retriever.retrieve_kg_context(
-            query=query,
-            doc_id_filter=doc_id_filter,
-        )
-
-    if not kg_result or not kg_result.get("chunks"):
-        logfire.info("kg_retrieve_no_results", query=query[:80])
-        return {
-            "kg_entities_found": kg_result.get("entities", []) if kg_result else [],
-            "kg_chunks": [],
-            "kg_traversal_paths": [],
-        }
-
-    # Tag KG-sourced chunks with provenance
-    for chunk in kg_result["chunks"]:
-        chunk["retrieval_source"] = "knowledge_graph"
-
-    logfire.info(
-        "kg_retrieve_complete",
-        num_entities=len(kg_result.get("entities", [])),
-        num_chunks=len(kg_result["chunks"]),
-        num_paths=len(kg_result.get("paths", [])),
-    )
-
-    return {
-        "kg_entities_found": kg_result.get("entities", []),
-        "kg_chunks": kg_result["chunks"],
-        "kg_traversal_paths": kg_result.get("paths", []),
-        "accepted_chunks": (state.get("accepted_chunks") or []) + kg_result["chunks"],
     }
 
 

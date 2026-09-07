@@ -121,12 +121,5 @@ class Config:
         "FAITHFULNESS_MODEL", "vectara/hallucination_evaluation_model"
     )
 
-    # Knowledge Graph
-    KG_ENABLED: bool = os.getenv("KG_ENABLED", "false").lower() == "true"
-    KG_MAX_HOPS: int = int(os.getenv("KG_MAX_HOPS", "2"))
-    KG_MAX_CHUNKS: int = int(os.getenv("KG_MAX_CHUNKS", "5"))
-    KG_EXTRACTION_BATCH_SIZE: int = int(os.getenv("KG_EXTRACTION_BATCH_SIZE", "5"))
-    KG_MIN_CONFIDENCE: float = float(os.getenv("KG_MIN_CONFIDENCE", "0.5"))
-
 
 config = Config()

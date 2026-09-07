@@ -100,7 +100,6 @@ from medici.ingestion import Processor, EmbeddingService
 from medici.common.llm import GeminiClient, GroqClient
 from medici.common.services import QdrantStorageService, HybridSearch
 from medici.agents import GraphPipeline, RetrievalAgent, RouterAgent
-from medici.knowledge_graph import KGExtractor, KGStore
 ```
 
 ---

@@ -44,9 +44,6 @@ from medici.common.utils.helper import check_env, has_internet
 from medici.common.utils.tokenizer import TikTokenTokenizer
 from medici.ingestion.embedding import EmbeddingService
 from medici.ingestion.processor import Processor
-from medici.knowledge_graph.extractor import KGExtractor
-from medici.knowledge_graph.retriever import KGRetriever
-from medici.knowledge_graph.store import KGStore
 
 
 @asynccontextmanager
@@ -69,7 +66,7 @@ async def lifespan(app: FastAPI):
         closers.append(("postgres pool", pool.close))
 
         gemini_client = GeminiClient(timeout_seconds=30, max_retries=2, model=config.GEMINI_MODEL)
-        groq_client = GroqClient(timeout_seconds=30, max_retries=2)
+        groq_client = GroqClient(timeout_seconds=30, max_retries=2, model=config.GROQ_MODEL)
 
         primary_groq_fallback_gemini = FallbackClient(primary=groq_client, fallback=gemini_client)
         primary_gemini_fallback_groq = FallbackClient(primary=gemini_client, fallback=groq_client)
@@ -125,39 +122,7 @@ async def lifespan(app: FastAPI):
         else:
             logfire.info("FaithfulnessChecker disabled")
 
-        kg_retriever = None
-        kg_extractor = None
-        kg_store = None
-        if config.KG_ENABLED:
-            kg_store = KGStore(pool)
-            await kg_store.setup()
-            kg_extractor = KGExtractor(
-                llm_client=primary_groq_fallback_gemini,
-                batch_size=config.KG_EXTRACTION_BATCH_SIZE,
-                min_confidence=config.KG_MIN_CONFIDENCE,
-            )
-            kg_retriever = KGRetriever(
-                llm_client=primary_groq_fallback_gemini,
-                kg_store=kg_store,
-                storage_service=storage_service,
-                max_hops=config.KG_MAX_HOPS,
-                max_kg_chunks=config.KG_MAX_CHUNKS,
-            )
-            logfire.info(
-                "Knowledge Graph layer enabled",
-                max_hops=config.KG_MAX_HOPS,
-                max_chunks=config.KG_MAX_CHUNKS,
-            )
-        else:
-            logfire.info("Knowledge Graph layer disabled (KG_ENABLED=false)")
-
-        processor = Processor(
-            tokenizer,
-            embedding_service,
-            storage_service,
-            kg_extractor=kg_extractor,
-            kg_store=kg_store,
-        )
+        processor = Processor(tokenizer, embedding_service, storage_service)
 
         graph = await compile_graph_with_postgres(
             pool=pool,
@@ -169,7 +134,6 @@ async def lifespan(app: FastAPI):
             grader=GraderAgent(primary_groq_fallback_gemini),
             synthesizer=SynthesizerAgent(primary_groq_fallback_gemini),
             faithfulness_checker=faithfulness_checker,
-            kg_retriever=kg_retriever,
         )
 
         semantic_cache: SemanticQueryCache | None = None

@@ -32,13 +32,9 @@ class Processor:
         embedding_service: EmbeddingService,
         storage_service: QdrantStorageService,
         max_concurrency: int = 4,
-        kg_extractor=None,
-        kg_store=None,
     ):
         self.embedding_service = embedding_service
         self.storage_service = storage_service
-        self._kg_extractor = kg_extractor
-        self._kg_store = kg_store
 
         self.tokenizer = tokenizer or TikTokenTokenizer(model_name="gpt-4o-mini")
 
@@ -408,30 +404,11 @@ class Processor:
         await self.storage_service.upsert_embedded_chunks(embedded_chunks)
         logfire.info("Stage 4 complete: stored in Qdrant")
 
-        kg_entities_count = 0
-        kg_relationships_count = 0
-        if self._kg_extractor is not None and self._kg_store is not None:
-            try:
-                kg_results = await self._kg_extractor.extract_from_chunks(chunks, doc_id)
-                for result in kg_results:
-                    await self._kg_store.upsert_extraction(result)
-                kg_entities_count = sum(len(r.entities) for r in kg_results)
-                kg_relationships_count = sum(len(r.relationships) for r in kg_results)
-                logfire.info(
-                    f"Stage 5 complete: KG extraction — "
-                    f"{kg_entities_count} entities, "
-                    f"{kg_relationships_count} relationships"
-                )
-            except Exception as e:
-                logfire.error(f"Stage 5 KG extraction failed (non-fatal): {e}")
-
         return {
             "doc_id": doc_id,
             "chunks_produced": len(chunks),
             "vectors_stored": len(embedded_chunks),
             "dead_letter_count": len(dead_letter),
-            "kg_entities": kg_entities_count,
-            "kg_relationships": kg_relationships_count,
             "dead_letter_chunks": [
                 {
                     "chunk_index": d["chunk_index"],
